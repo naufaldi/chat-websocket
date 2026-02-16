@@ -13,7 +13,6 @@ interface HealthResponse {
 
 @Controller('health')
 export class HealthController {
-  // eslint-disable-next-line no-unused-vars
   constructor(private readonly databaseService: DatabaseService) {}
 
   @Get()

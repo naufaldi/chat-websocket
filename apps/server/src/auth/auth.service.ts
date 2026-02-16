@@ -5,15 +5,23 @@ import * as argon2 from 'argon2';
 import { UsersRepository } from '../users';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
 
+interface TokenResponse {
+  accessToken: string;
+}
+
+interface UserResponse {
+  id: string;
+  email: string;
+  username: string;
+  displayName: string;
+  createdAt: Date;
+}
+
 @Injectable()
 export class AuthService {
-   
   constructor(
-    // eslint-disable-next-line no-unused-vars
     private readonly usersRepository: UsersRepository,
-    // eslint-disable-next-line no-unused-vars
     private readonly jwtService: JwtService,
-    // eslint-disable-next-line no-unused-vars
     private readonly configService: ConfigService,
   ) {}
 
@@ -98,13 +106,12 @@ export class AuthService {
     };
   }
 
-  async refreshTokens(userId: string, email: string): Promise<{ accessToken: string }> {
+  async refreshTokens(userId: string, email: string): Promise<TokenResponse> {
     const tokens = await this.generateTokens(userId, email);
     return { accessToken: tokens.accessToken };
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async getMe(userId: string) {
+  async getMe(userId: string): Promise<UserResponse> {
     const user = await this.usersRepository.findById(userId);
     if (!user) {
       throw new UnauthorizedException('User not found');
@@ -119,8 +126,7 @@ export class AuthService {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  private async generateTokens(userId: string, email: string) {
+  private async generateTokens(userId: string, email: string): Promise<TokenResponse> {
     const payload = { sub: userId, email };
     
     const accessToken = this.jwtService.sign(payload, {

@@ -30,7 +30,7 @@ export default [
       }],
       '@typescript-eslint/explicit-function-return-type': 'error',
       '@typescript-eslint/no-explicit-any': 'warn',
-      'no-unused-vars': 'error',
+      'no-unused-vars': 'off', // Turned off in favor of @typescript-eslint/no-unused-vars
     },
   },
   {

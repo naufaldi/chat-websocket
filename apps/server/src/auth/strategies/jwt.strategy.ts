@@ -4,12 +4,20 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersRepository } from '../../users/users.repository';
 
+interface JwtPayload {
+  sub: string;
+  email: string;
+}
+
+interface UserValidateResponse {
+  userId: string;
+  email: string;
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-     
     private readonly configService: ConfigService,
-    // eslint-disable-next-line no-unused-vars
     private readonly usersRepository: UsersRepository,
   ) {
     super({
@@ -19,8 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async validate(payload: { sub: string; email: string }) {
+  async validate(payload: JwtPayload): Promise<UserValidateResponse> {
     const user = await this.usersRepository.findById(payload.sub);
     
     if (!user || !user.isActive) {

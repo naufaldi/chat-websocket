@@ -1,16 +1,28 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { DRIZZLE } from '../database/database.service';
+import { DRIZZLE, DrizzleDB } from '../database/database.service';
 import { users } from '@chat/db';
 import type { RegisterInput } from '@chat/shared';
 
+// Type inference from Drizzle schema
+interface User {
+  id: string;
+  email: string;
+  username: string;
+  passwordHash: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isActive: boolean;
+  lastSeenAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 @Injectable()
 export class UsersRepository {
-  // eslint-disable-next-line no-unused-vars
-  constructor(@Inject(DRIZZLE) private readonly db: any) {}
+  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async findById(id: string) {
+  async findById(id: string): Promise<User | null> {
     const [user] = await this.db
       .select()
       .from(users)
@@ -19,8 +31,7 @@ export class UsersRepository {
     return user || null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async findByEmail(email: string) {
+  async findByEmail(email: string): Promise<User | null> {
     const [user] = await this.db
       .select()
       .from(users)
@@ -29,8 +40,7 @@ export class UsersRepository {
     return user || null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async findByUsername(username: string) {
+  async findByUsername(username: string): Promise<User | null> {
     const [user] = await this.db
       .select()
       .from(users)
@@ -39,8 +49,7 @@ export class UsersRepository {
     return user || null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async create(data: RegisterInput & { passwordHash: string }) {
+  async create(data: RegisterInput & { passwordHash: string }): Promise<User> {
     const [user] = await this.db
       .insert(users)
       .values({
@@ -53,8 +62,7 @@ export class UsersRepository {
     return user;
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async updateLastSeen(id: string) {
+  async updateLastSeen(id: string): Promise<void> {
     await this.db
       .update(users)
       .set({ lastSeenAt: new Date() })

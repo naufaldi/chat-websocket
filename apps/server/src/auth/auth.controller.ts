@@ -4,10 +4,21 @@ import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
 import { JwtAuthGuard } from './guards';
 
+interface RefreshResponse {
+  accessToken: string;
+}
+
+interface UserResponse {
+  id: string;
+  email: string;
+  username: string;
+  displayName: string;
+  createdAt: Date;
+}
+
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
-  // eslint-disable-next-line no-unused-vars
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
@@ -53,8 +64,7 @@ export class AuthController {
     }
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async refresh(@Request() req: { user: { userId: string; email: string } }) {
+  async refresh(@Request() req: { user: { userId: string; email: string } }): Promise<RefreshResponse> {
     return this.authService.refreshTokens(req.user.userId, req.user.email);
   }
 
@@ -64,8 +74,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current user', description: 'Get information about the currently authenticated user' })
   @ApiResponse({ status: 200, description: 'Current user info' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async getMe(@Request() req: { user: { userId: string } }) {
+  async getMe(@Request() req: { user: { userId: string } }): Promise<UserResponse> {
     return this.authService.getMe(req.user.userId);
   }
 }

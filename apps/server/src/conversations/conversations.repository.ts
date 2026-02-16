@@ -1,16 +1,28 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { eq, desc, and, inArray } from 'drizzle-orm';
-import { DRIZZLE } from '../database/database.service';
+import { DRIZZLE, DrizzleDB } from '../database/database.service';
 import { conversations, conversationParticipants } from '@chat/db';
 import type { CreateConversationInput } from '@chat/shared';
 
+interface Conversation {
+  id: string;
+  type: 'direct' | 'group';
+  title: string | null;
+  avatarUrl: string | null;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface ParticipantRow {
+  conversationId: string;
+}
+
 @Injectable()
 export class ConversationsRepository {
-  // eslint-disable-next-line no-unused-vars
-  constructor(@Inject(DRIZZLE) private readonly db: any) {}
+  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async findById(id: string) {
+  async findById(id: string): Promise<Conversation | null> {
     const [conversation] = await this.db
       .select()
       .from(conversations)
@@ -19,15 +31,13 @@ export class ConversationsRepository {
     return conversation || null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async findByUser(userId: string, limit = 20) {
-    const participantRows = await this.db
+  async findByUser(userId: string, limit = 20): Promise<Conversation[]> {
+    const participantRows: ParticipantRow[] = await this.db
       .select({ conversationId: conversationParticipants.conversationId })
       .from(conversationParticipants)
       .where(eq(conversationParticipants.userId, userId));
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const conversationIds = participantRows.map((p: any) => p.conversationId);
+    const conversationIds = participantRows.map((p) => p.conversationId);
 
     if (conversationIds.length === 0) return [];
 
@@ -39,10 +49,8 @@ export class ConversationsRepository {
       .limit(limit);
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async create(data: CreateConversationInput, createdBy: string) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return this.db.transaction(async (tx: any) => {
+  async create(data: CreateConversationInput, createdBy: string): Promise<Conversation> {
+    return this.db.transaction(async (tx: DrizzleDB) => {
       const [conversation] = await tx
         .insert(conversations)
         .values({
@@ -56,7 +64,7 @@ export class ConversationsRepository {
         data.participantIds.map((userId) => ({
           conversationId: conversation.id,
           userId,
-          role: userId === createdBy ? 'owner' : 'member',
+          role: userId === createdBy ? 'owner' : 'member' as const,
         }))
       );
 
@@ -64,8 +72,7 @@ export class ConversationsRepository {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async isUserParticipant(conversationId: string, userId: string) {
+  async isUserParticipant(conversationId: string, userId: string): Promise<boolean> {
     const [participant] = await this.db
       .select()
       .from(conversationParticipants)

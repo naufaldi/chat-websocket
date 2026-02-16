@@ -1,16 +1,28 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { eq, desc, and, isNull } from 'drizzle-orm';
-import { DRIZZLE } from '../database/database.service';
+import { DRIZZLE, DrizzleDB } from '../database/database.service';
 import { messages } from '@chat/db';
 import type { SendMessageInput } from '@chat/shared';
 
+interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  contentType: 'text' | 'image' | 'file';
+  clientMessageId: string | null;
+  status: 'sending' | 'delivered' | 'read' | 'error';
+  replyToId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+}
+
 @Injectable()
 export class MessagesRepository {
-  // eslint-disable-next-line no-unused-vars
-  constructor(@Inject(DRIZZLE) private readonly db: any) {}
+  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async findById(id: string) {
+  async findById(id: string): Promise<Message | null> {
     const [message] = await this.db
       .select()
       .from(messages)
@@ -19,9 +31,13 @@ export class MessagesRepository {
     return message || null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type, no-unused-vars
-  async findByConversation(conversationId: string, limit = 50, _cursor?: string) {
-    const query = this.db
+  async findByConversation(
+    conversationId: string,
+    limit = 50,
+     
+    _cursor?: string
+  ): Promise<Message[]> {
+    return this.db
       .select()
       .from(messages)
       .where(and(
@@ -30,12 +46,9 @@ export class MessagesRepository {
       ))
       .orderBy(desc(messages.createdAt), desc(messages.id))
       .limit(limit);
-
-    return query;
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async findByClientMessageId(clientMessageId: string) {
+  async findByClientMessageId(clientMessageId: string): Promise<Message | null> {
     const [message] = await this.db
       .select()
       .from(messages)
@@ -44,8 +57,7 @@ export class MessagesRepository {
     return message || null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async create(data: SendMessageInput & { senderId: string }) {
+  async create(data: SendMessageInput & { senderId: string }): Promise<Message> {
     const [message] = await this.db
       .insert(messages)
       .values({
@@ -60,8 +72,7 @@ export class MessagesRepository {
     return message;
   }
 
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  async softDelete(id: string) {
+  async softDelete(id: string): Promise<void> {
     await this.db
       .update(messages)
       .set({ deletedAt: new Date() })
