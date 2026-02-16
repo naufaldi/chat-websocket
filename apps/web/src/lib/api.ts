@@ -7,7 +7,10 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 let refreshAttempts = 0;
 const MAX_REFRESH_ATTEMPTS = 3;
 
-const isRefreshRequest = (url: string) => url.includes('/auth/refresh');
+// Auth endpoints that don't require token refresh on 401
+const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh'];
+
+const isAuthEndpoint = (url: string) => AUTH_ENDPOINTS.some(endpoint => url.includes(endpoint));
 
 export const api = axios.create({
   baseURL: `${API_URL}/api`,
@@ -34,8 +37,8 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Skip if already retried or if this is a refresh request
-    if (originalRequest._retry || isRefreshRequest(originalRequest.url)) {
+    // Skip if already retried or if this is an auth endpoint (login/register/refresh)
+    if (originalRequest._retry || isAuthEndpoint(originalRequest.url)) {
       return Promise.reject(error);
     }
 
@@ -46,12 +49,21 @@ api.interceptors.response.use(
       if (refreshAttempts < MAX_REFRESH_ATTEMPTS) {
         refreshAttempts++;
 
+        const refreshToken = localStorage.getItem('refreshToken');
+
+        if (!refreshToken) {
+          // No refresh token - clear tokens and reject
+          refreshAttempts = 0;
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          return Promise.reject(error);
+        }
+
         try {
-          // Use the authApi directly without interceptors to avoid infinite loop
-          const response = await axios.post(`${API_URL}/api/auth/refresh`, {}, {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-            },
+          // Use plain axios to avoid interceptor loop
+          // Send refresh_token in body (not auth header)
+          const response = await axios.post(`${API_URL}/api/auth/refresh`, {
+            refreshToken,
           });
 
           const { accessToken } = response.data;
@@ -64,17 +76,17 @@ api.interceptors.response.use(
 
           return api(originalRequest);
         } catch (refreshError) {
-          // Refresh failed - clear tokens and redirect to login
+          // Refresh failed - clear tokens but DON'T redirect
           refreshAttempts = 0;
           localStorage.removeItem('accessToken');
-          window.location.href = '/login';
+          localStorage.removeItem('refreshToken');
           return Promise.reject(refreshError);
         }
       } else {
-        // Max refresh attempts reached - redirect to login
+        // Max refresh attempts reached - clear tokens
         refreshAttempts = 0;
         localStorage.removeItem('accessToken');
-        window.location.href = '/login';
+        localStorage.removeItem('refreshToken');
         return Promise.reject(error);
       }
     }
@@ -89,16 +101,19 @@ export const authApi = {
   login: (data: LoginInput) => api.post<AuthResponse>('/auth/login', data),
   getMe: () => api.get<UserResponse>('/auth/me'),
   refresh: () => api.post<{ accessToken: string }>('/auth/refresh'),
+  logout: () => api.post('/auth/logout'),
 };
 
-// Helper to set auth token
-export const setAuthToken = (token: string) => {
-  localStorage.setItem('accessToken', token);
+// Helper to set auth tokens (access + refresh)
+export const setAuthToken = (accessToken: string, refreshToken: string) => {
+  localStorage.setItem('accessToken', accessToken);
+  localStorage.setItem('refreshToken', refreshToken);
 };
 
-// Helper to clear auth token
+// Helper to clear auth tokens
 export const clearAuthToken = () => {
   localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
 };
 
 // Helper to get auth token
