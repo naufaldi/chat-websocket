@@ -1,9 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
+import type { DrizzleDB } from './database.types';
 
 export const DRIZZLE = Symbol('DRIZZLE');
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type DrizzleDB = any;
 
 @Injectable()
 export class DatabaseService {

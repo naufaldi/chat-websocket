@@ -26,6 +26,23 @@ export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required'),
 });
 
+// User response from /auth/me endpoint (includes createdAt as string)
+export const userResponseSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  username: z.string(),
+  displayName: z.string(),
+  createdAt: z.string(),
+});
+
+// Auth response from login/register
+export const authResponseSchema = z.object({
+  accessToken: z.string(),
+  user: userResponseSchema,
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
+export type UserResponse = z.infer<typeof userResponseSchema>;
+export type AuthResponse = z.infer<typeof authResponseSchema>;

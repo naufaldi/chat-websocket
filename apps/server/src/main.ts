@@ -6,6 +6,9 @@ import { AppModule } from './app.module';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
+  // Set global API prefix
+  app.setGlobalPrefix('api');
+
   app.enableCors({
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
     credentials: true,
@@ -25,11 +28,21 @@ async function bootstrap(): Promise<void> {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('docs', app, document);
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
-  console.log(`Server running on port ${port}`);
-  console.log(`Swagger UI available at http://localhost:${port}/api/docs`);
+
+  try {
+    await app.listen(port);
+    console.log(`Server running on port ${port}`);
+    console.log(`Swagger UI available at http://localhost:${port}/docs`);
+  } catch (error: any) {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`Port ${port} is already in use. Please stop the existing server or use a different port.`);
+      console.error(`You can change the port by setting the PORT environment variable.`);
+      process.exit(1);
+    }
+    throw error;
+  }
 }
 bootstrap();

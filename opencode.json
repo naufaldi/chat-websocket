@@ -3,11 +3,10 @@
   "mcp": {
     "postgres": {
       "type": "local",
-      "command": ["docker", "run", "-i", "--rm", "-e", "DATABASE_URI", "crystaldba/postgres-mcp", "--access-mode=unrestricted"],
-      "env": {
+      "command": ["uvx", "postgres-mcp", "--access-mode=unrestricted"],
+      "environment": {
         "DATABASE_URI": "postgresql://chat:chat_password@localhost:5432/chat_db"
-      },
-      "enabled": true
+      }
     }
   }
 }

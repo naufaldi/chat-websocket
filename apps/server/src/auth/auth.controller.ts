@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
 import { JwtAuthGuard } from './guards';
+import { JwtRefreshAuthGuard } from './guards/jwt-refresh.guard';
 
 interface RefreshResponse {
   accessToken: string;
@@ -49,10 +50,10 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtRefreshAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Refresh access token', description: 'Get a new access token using current valid token' })
+  @ApiOperation({ summary: 'Refresh access token', description: 'Get a new access token using expired token' })
   @ApiResponse({ 
     status: 200, 
     description: 'Token refreshed successfully',
