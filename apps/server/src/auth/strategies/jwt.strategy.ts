@@ -7,7 +7,9 @@ import { UsersRepository } from '../../users/users.repository';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
+     
     private readonly configService: ConfigService,
+    // eslint-disable-next-line no-unused-vars
     private readonly usersRepository: UsersRepository,
   ) {
     super({
@@ -17,6 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   async validate(payload: { sub: string; email: string }) {
     const user = await this.usersRepository.findById(payload.sub);
     

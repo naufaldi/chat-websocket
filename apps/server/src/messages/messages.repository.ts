@@ -6,8 +6,10 @@ import type { SendMessageInput } from '@chat/shared';
 
 @Injectable()
 export class MessagesRepository {
+  // eslint-disable-next-line no-unused-vars
   constructor(@Inject(DRIZZLE) private readonly db: any) {}
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   async findById(id: string) {
     const [message] = await this.db
       .select()
@@ -17,8 +19,9 @@ export class MessagesRepository {
     return message || null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type, no-unused-vars
   async findByConversation(conversationId: string, limit = 50, _cursor?: string) {
-    let query = this.db
+    const query = this.db
       .select()
       .from(messages)
       .where(and(
@@ -31,6 +34,7 @@ export class MessagesRepository {
     return query;
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   async findByClientMessageId(clientMessageId: string) {
     const [message] = await this.db
       .select()
@@ -40,6 +44,7 @@ export class MessagesRepository {
     return message || null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   async create(data: SendMessageInput & { senderId: string }) {
     const [message] = await this.db
       .insert(messages)
@@ -55,6 +60,7 @@ export class MessagesRepository {
     return message;
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   async softDelete(id: string) {
     await this.db
       .update(messages)

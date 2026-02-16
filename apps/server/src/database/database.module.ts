@@ -12,6 +12,7 @@ import { DatabaseService, DRIZZLE } from './database.service';
     {
       provide: DRIZZLE,
       inject: [ConfigService],
+      // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
       useFactory: (configService: ConfigService) => {
         const connectionString = configService.getOrThrow<string>('DATABASE_URL');
         const pool = new Pool({

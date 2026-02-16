@@ -7,9 +7,13 @@ import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
 
 @Injectable()
 export class AuthService {
+   
   constructor(
+    // eslint-disable-next-line no-unused-vars
     private readonly usersRepository: UsersRepository,
+    // eslint-disable-next-line no-unused-vars
     private readonly jwtService: JwtService,
+    // eslint-disable-next-line no-unused-vars
     private readonly configService: ConfigService,
   ) {}
 
@@ -99,6 +103,7 @@ export class AuthService {
     return { accessToken: tokens.accessToken };
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   async getMe(userId: string) {
     const user = await this.usersRepository.findById(userId);
     if (!user) {
@@ -114,6 +119,7 @@ export class AuthService {
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   private async generateTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
     

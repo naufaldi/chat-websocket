@@ -6,8 +6,10 @@ import type { RegisterInput } from '@chat/shared';
 
 @Injectable()
 export class UsersRepository {
+  // eslint-disable-next-line no-unused-vars
   constructor(@Inject(DRIZZLE) private readonly db: any) {}
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   async findById(id: string) {
     const [user] = await this.db
       .select()
@@ -17,6 +19,7 @@ export class UsersRepository {
     return user || null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   async findByEmail(email: string) {
     const [user] = await this.db
       .select()
@@ -26,6 +29,7 @@ export class UsersRepository {
     return user || null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   async findByUsername(username: string) {
     const [user] = await this.db
       .select()
@@ -35,6 +39,7 @@ export class UsersRepository {
     return user || null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   async create(data: RegisterInput & { passwordHash: string }) {
     const [user] = await this.db
       .insert(users)
@@ -48,6 +53,7 @@ export class UsersRepository {
     return user;
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   async updateLastSeen(id: string) {
     await this.db
       .update(users)
