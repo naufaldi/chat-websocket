@@ -8,9 +8,11 @@ interface SidebarProps {
   selectedId?: string;
   onSelect: (id: string) => void;
   onCreateChat: () => void;
+  onLeave?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export function Sidebar({ conversations, selectedId, onSelect, onCreateChat }: SidebarProps) {
+export function Sidebar({ conversations, selectedId, onSelect, onCreateChat, onLeave, onDelete }: SidebarProps) {
   const [search, setSearch] = useState('');
 
   const filtered = conversations.filter((c) => {
@@ -42,6 +44,8 @@ export function Sidebar({ conversations, selectedId, onSelect, onCreateChat }: S
             conversation={conversation}
             isActive={conversation.id === selectedId}
             onClick={() => onSelect(conversation.id)}
+            onLeave={onLeave}
+            onDelete={onDelete}
           />
         ))}
         {filtered.length === 0 && (

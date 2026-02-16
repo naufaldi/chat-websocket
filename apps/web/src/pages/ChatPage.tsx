@@ -16,7 +16,7 @@ export function ChatPage() {
   const selectedId = searchParams.get('chat') || undefined;
   const queryClient = useQueryClient();
 
-  const { data, isLoading, refetch } = useConversations();
+  const { data } = useConversations();
   // Data structure: { conversations: ConversationListItem[], nextCursor, hasMore }
   const conversations = data?.pages.flatMap((page) => page.conversations) || [];
 
@@ -33,12 +33,46 @@ export function ChatPage() {
     },
   });
 
+  const leaveMutation = useMutation({
+    mutationFn: (id: string) => conversationsApi.leave(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      // If leaving the currently selected conversation, redirect to home
+      if (selectedId) {
+        setSearchParams({});
+      }
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => conversationsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      // If deleting the currently selected conversation, redirect to home
+      if (selectedId) {
+        setSearchParams({});
+      }
+    },
+  });
+
   const handleSelect = (id: string) => {
     setSearchParams({ chat: id });
   };
 
   const handleCreateConversation = (data: CreateConversationInput) => {
     createMutation.mutate(data);
+  };
+
+  const handleLeave = (id: string) => {
+    if (confirm('Are you sure you want to leave this group?')) {
+      leaveMutation.mutate(id);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+      deleteMutation.mutate(id);
+    }
   };
 
   const handleSendMessage = (content: string) => {
@@ -62,6 +96,8 @@ export function ChatPage() {
           selectedId={selectedId}
           onSelect={handleSelect}
           onCreateChat={() => setShowCreateModal(true)}
+          onLeave={handleLeave}
+          onDelete={handleDelete}
         />
       }
     >
