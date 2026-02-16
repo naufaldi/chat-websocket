@@ -1,5 +1,18 @@
+import { z } from 'zod';
 import axios from 'axios';
 import type { LoginInput, RegisterInput, UserResponse, AuthResponse } from '@chat/shared/schemas/auth';
+import {
+  conversationListItemSchema,
+  conversationDetailSchema,
+  conversationCreatedSchema,
+} from '@chat/shared/schemas/conversation';
+import type {
+  ConversationListItem,
+  ConversationDetail,
+  ConversationCreated,
+  CreateConversationInput,
+} from '@chat/shared/schemas/conversation';
+import type { ConversationsQueryResponse } from '@/types/conversation';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -102,6 +115,41 @@ export const authApi = {
   getMe: () => api.get<UserResponse>('/auth/me'),
   refresh: () => api.post<{ accessToken: string }>('/auth/refresh'),
   logout: () => api.post('/auth/logout'),
+};
+
+// Conversation API functions
+export const conversationsApi = {
+  list: async (cursor?: string, limit = 50): Promise<ConversationsQueryResponse> => {
+    const params = new URLSearchParams();
+    if (cursor) params.set('cursor', cursor);
+    params.set('limit', String(limit));
+    const response = await api.get('/conversations', { params });
+    // Validate response against Zod schema
+    const data = response.data;
+    return {
+      conversations: z.array(conversationListItemSchema).parse(data.conversations),
+      nextCursor: data.nextCursor,
+      hasMore: data.hasMore,
+    };
+  },
+
+  get: async (id: string): Promise<ConversationDetail> => {
+    const response = await api.get(`/conversations/${id}`);
+    return conversationDetailSchema.parse(response.data);
+  },
+
+  create: async (data: CreateConversationInput): Promise<ConversationCreated> => {
+    const response = await api.post('/conversations', data);
+    return conversationCreatedSchema.parse(response.data);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/conversations/${id}`);
+  },
+
+  leave: async (id: string): Promise<void> => {
+    await api.delete(`/conversations/${id}/leave`);
+  },
 };
 
 // Helper to set auth tokens (access + refresh)
