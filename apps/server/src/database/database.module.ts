@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from '@chat/db';
+import { DatabaseService } from './database.service';
 
 export const DRIZZLE = Symbol('DRIZZLE');
 
@@ -24,7 +25,8 @@ export const DRIZZLE = Symbol('DRIZZLE');
         return drizzle(pool, { schema });
       },
     },
+    DatabaseService,
   ],
-  exports: [DRIZZLE],
+  exports: [DRIZZLE, DatabaseService],
 })
 export class DatabaseModule {}
