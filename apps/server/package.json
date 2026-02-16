@@ -5,9 +5,9 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "nest build",
-    "dev": "nest start --watch",
-    "start": "node dist/main.js",
-    "start:dev": "nest start --watch",
+    "dev": "bun run --watch src/main.ts",
+    "start": "bun run dist/main.js",
+    "start:dev": "bun run --watch src/main.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "typecheck": "tsc --noEmit"
   },
