@@ -1,5 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { DRIZZLE } from './database.module';
+
+export const DRIZZLE = Symbol('DRIZZLE');
 
 @Injectable()
 export class DatabaseService {

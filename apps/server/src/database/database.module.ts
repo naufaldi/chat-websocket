@@ -3,9 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from '@chat/db';
-import { DatabaseService } from './database.service';
-
-export const DRIZZLE = Symbol('DRIZZLE');
+import { DatabaseService, DRIZZLE } from './database.service';
 
 @Global()
 @Module({
