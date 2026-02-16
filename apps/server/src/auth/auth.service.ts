@@ -2,11 +2,14 @@ import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
+import { randomUUID } from 'crypto';
 import { UsersRepository } from '../users';
 import { RegisterDto, LoginDto, AuthResponseDto, UserDto } from './dto';
+import { TokenBlacklistService } from './token-blacklist.service';
 
 interface TokenResponse {
   accessToken: string;
+  refreshToken: string;
 }
 
 @Injectable()
@@ -15,6 +18,7 @@ export class AuthService {
     private readonly usersRepository: UsersRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly tokenBlacklistService: TokenBlacklistService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
@@ -60,6 +64,7 @@ export class AuthService {
 
     return {
       accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
       user: userDto,
     };
   }
@@ -98,13 +103,14 @@ export class AuthService {
 
     return {
       accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
       user: userDto,
     };
   }
 
   async refreshTokens(userId: string, email: string): Promise<TokenResponse> {
     const tokens = await this.generateTokens(userId, email);
-    return { accessToken: tokens.accessToken };
+    return { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
   }
 
   async getMe(userId: string): Promise<UserDto> {
@@ -122,14 +128,66 @@ export class AuthService {
     };
   }
 
+  /**
+   * Logout - blacklist the provided refresh token
+   * @param refreshToken - The refresh token to blacklist
+   */
+  async logout(refreshToken: string): Promise<void> {
+    try {
+      const payload = this.jwtService.verify(refreshToken, {
+        secret: this.configService.get('JWT_REFRESH_SECRET') || this.configService.get('JWT_SECRET'),
+      });
+
+      // Calculate expiration time in milliseconds
+      const expiresInMs = payload.exp * 1000;
+      this.tokenBlacklistService.add(payload.jti, expiresInMs);
+    } catch {
+      // Token is invalid anyway, nothing to blacklist
+    }
+  }
+
+  /**
+   * Check if a refresh token is blacklisted
+   */
+  isRefreshTokenBlacklisted(refreshToken: string): boolean {
+    try {
+      const payload = this.jwtService.verify(refreshToken, {
+        secret: this.configService.get('JWT_REFRESH_SECRET') || this.configService.get('JWT_SECRET'),
+      });
+      return this.tokenBlacklistService.isBlacklisted(payload.jti);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if an access token is blacklisted
+   */
+  isAccessTokenBlacklisted(accessToken: string): boolean {
+    try {
+      const payload = this.jwtService.verify(accessToken, {
+        secret: this.configService.get('JWT_SECRET'),
+      });
+      return this.tokenBlacklistService.isBlacklisted(payload.jti);
+    } catch {
+      return false;
+    }
+  }
+
   private async generateTokens(userId: string, email: string): Promise<TokenResponse> {
-    const payload = { sub: userId, email };
-    
+    const jti = randomUUID();
+    const payload = { sub: userId, email, jti };
+
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get('JWT_SECRET'),
       expiresIn: '15m',
     });
 
-    return { accessToken };
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.get('JWT_REFRESH_SECRET') || this.configService.get('JWT_SECRET'),
+      expiresIn: '7d',
+    });
+
+    return { accessToken, refreshToken };
   }
 }

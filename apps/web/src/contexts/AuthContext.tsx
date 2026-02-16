@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { useCurrentUser, useLogin, useRegister, useLogout } from '../hooks/useAuth';
 import { getAuthToken } from '../lib/api';
 import type { LoginInput, RegisterInput, UserResponse } from '@chat/shared/schemas/auth';
@@ -28,29 +28,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  const login = async (data: LoginInput) => {
+  // Memoize callback functions to prevent re-renders
+  const login = useCallback(async (data: LoginInput) => {
     await loginMutation.mutateAsync(data);
-  };
+  }, [loginMutation]);
 
-  const register = async (data: RegisterInput) => {
+  const register = useCallback(async (data: RegisterInput) => {
     await registerMutation.mutateAsync(data);
-  };
+  }, [registerMutation]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     logoutFn();
-  };
+  }, [logoutFn]);
+
+  // Memoize context value to prevent infinite re-renders
+  const value = useMemo(() => ({
+    user: user ?? null,
+    isLoading,
+    isAuthenticated: !!user && !isLoading,
+    login,
+    register,
+    logout,
+  }), [user, isLoading, login, register, logout]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user: user ?? null,
-        isLoading,
-        isAuthenticated: !!user && !isLoading,
-        login,
-        register,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

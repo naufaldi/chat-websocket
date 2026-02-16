@@ -38,8 +38,12 @@ export const userResponseSchema = z.object({
 // Auth response from login/register
 export const authResponseSchema = z.object({
   accessToken: z.string(),
+  refreshToken: z.string(),
   user: userResponseSchema,
 });
+
+// Empty schema for logout (no input required)
+export const logoutSchema = z.object({});
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;

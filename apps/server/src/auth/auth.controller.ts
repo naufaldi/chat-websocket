@@ -1,9 +1,10 @@
-import { Controller, Post, Get, Body, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Body, HttpCode, HttpStatus, UseGuards, Request, Headers, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
 import { JwtAuthGuard } from './guards';
-import { JwtRefreshAuthGuard } from './guards/jwt-refresh.guard';
 
 interface RefreshResponse {
   accessToken: string;
@@ -20,7 +21,11 @@ interface UserResponse {
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
@@ -50,12 +55,10 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @UseGuards(JwtRefreshAuthGuard)
   @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Refresh access token', description: 'Get a new access token using expired token' })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiOperation({ summary: 'Refresh access token', description: 'Get a new access token using refresh token' })
+  @ApiResponse({
+    status: 200,
     description: 'Token refreshed successfully',
     schema: {
       type: 'object',
@@ -65,8 +68,32 @@ export class AuthController {
     }
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async refresh(@Request() req: { user: { userId: string; email: string } }): Promise<RefreshResponse> {
-    return this.authService.refreshTokens(req.user.userId, req.user.email);
+  async refresh(@Body() body: { refreshToken: string }): Promise<RefreshResponse> {
+    const { refreshToken } = body;
+
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token is required');
+    }
+
+    // Check if refresh token is blacklisted
+    if (this.authService.isRefreshTokenBlacklisted(refreshToken)) {
+      throw new UnauthorizedException('Token has been revoked');
+    }
+
+    try {
+      // Verify refresh token
+      const payload = this.jwtService.verify(refreshToken, {
+        secret: this.configService.get('JWT_REFRESH_SECRET') || this.configService.get('JWT_SECRET'),
+      });
+
+      if (!payload.sub || !payload.email) {
+        throw new UnauthorizedException('Invalid token payload');
+      }
+
+      return this.authService.refreshTokens(payload.sub, payload.email);
+    } catch (error) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
   }
 
   @Get('me')
@@ -77,5 +104,28 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getMe(@Request() req: { user: { userId: string } }): Promise<UserResponse> {
     return this.authService.getMe(req.user.userId);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'User logout', description: 'Invalidate current session tokens' })
+  @ApiResponse({ status: 200, description: 'Logout successful' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async logout(
+    @Request() req: { user: { accessToken: string } },
+    @Headers('authorization') authorization: string,
+  ): Promise<{ message: string }> {
+    // Extract refresh token from Authorization header (sent as Bearer refreshToken)
+    const authHeader = authorization || '';
+    let refreshToken = '';
+
+    if (authHeader.startsWith('Bearer ')) {
+      refreshToken = authHeader.substring(7);
+    }
+
+    await this.authService.logout(refreshToken);
+    return { message: 'Logged out successfully' };
   }
 }
