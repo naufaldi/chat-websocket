@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { useCallback } from 'react';
 import { authApi, setAuthToken, clearAuthToken } from '../lib/api';
 import type { LoginInput, RegisterInput, UserResponse, AuthResponse } from '@chat/shared/schemas/auth';
 import { useAuthContext } from '../contexts/AuthContext';
@@ -10,11 +12,16 @@ export const authKeys = {
 
 // Hook for fetching current user
 export function useCurrentUser() {
+  // Only run query if token exists in localStorage
+  const hasToken = !!localStorage.getItem('accessToken');
+
   return useQuery({
     queryKey: authKeys.me,
     queryFn: () => authApi.getMe().then((res) => res.data),
-    retry: 1,
+    retry: 0, // Don't retry on 401 - let interceptor handle it
+    retryDelay: 0,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: hasToken, // Only fetch if token exists
   });
 }
 
@@ -25,7 +32,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: (data: LoginInput) => authApi.login(data).then((res) => res.data),
     onSuccess: (data: AuthResponse) => {
-      setAuthToken(data.accessToken);
+      setAuthToken(data.accessToken, data.refreshToken);
       queryClient.setQueryData<UserResponse>(authKeys.me, data.user);
     },
   });
@@ -38,7 +45,7 @@ export function useRegister() {
   return useMutation({
     mutationFn: (data: RegisterInput) => authApi.register(data).then((res) => res.data),
     onSuccess: (data: AuthResponse) => {
-      setAuthToken(data.accessToken);
+      setAuthToken(data.accessToken, data.refreshToken);
       queryClient.setQueryData<UserResponse>(authKeys.me, data.user);
     },
   });
@@ -47,11 +54,21 @@ export function useRegister() {
 // Hook for logout
 export function useLogout() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
-  return () => {
-    clearAuthToken();
-    queryClient.clear();
-  };
+  return useCallback(async () => {
+    try {
+      // Call logout endpoint (may fail if backend not implemented)
+      await authApi.logout();
+    } catch {
+      // Ignore errors - logout should work even if endpoint fails
+    } finally {
+      // Always clear tokens and redirect
+      clearAuthToken();
+      queryClient.clear();
+      navigate('/login', { replace: true });
+    }
+  }, [navigate, queryClient]);
 }
 
 // Hook for refreshing token
