@@ -2,9 +2,10 @@ import { Controller, Post, Get, Body, HttpCode, HttpStatus, UseGuards, Request, 
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
-import { JwtAuthGuard } from './guards';
+import { JwtAuthGuard, ThrottlerWithHeadersGuard } from './guards';
 
 interface RefreshResponse {
   accessToken: string;
@@ -28,28 +29,34 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @UseGuards(ThrottlerWithHeadersGuard)
+  @Throttle({ short: { limit: 5, ttl: 900000 } })
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register new user', description: 'Create a new account with email, username, and password' })
-  @ApiResponse({ 
-    status: 201, 
+  @ApiResponse({
+    status: 201,
     description: 'User created successfully',
-    type: AuthResponseDto 
+    type: AuthResponseDto
   })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 409, description: 'Email or username already exists' })
+  @ApiResponse({ status: 429, description: 'Too many requests - rate limit exceeded' })
   async register(@Body() dto: RegisterDto): Promise<AuthResponseDto> {
     return this.authService.register(dto);
   }
 
   @Post('login')
+  @UseGuards(ThrottlerWithHeadersGuard)
+  @Throttle({ short: { limit: 5, ttl: 900000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'User login', description: 'Authenticate with email and password' })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Login successful',
-    type: AuthResponseDto 
+    type: AuthResponseDto
   })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  @ApiResponse({ status: 429, description: 'Too many requests - rate limit exceeded' })
   async login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(dto);
   }
