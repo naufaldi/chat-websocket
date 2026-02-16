@@ -9,6 +9,7 @@
     "push": "drizzle-kit push"
   },
   "dependencies": {
+    "@chat/shared": "workspace:*",
     "drizzle-orm": "^0.45.1",
     "pg": "^8.11.0"
   },
