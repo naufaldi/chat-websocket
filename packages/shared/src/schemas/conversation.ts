@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { userPublicSchema } from './user';
+import { messageSchema } from './message';
 
 export const conversationTypeSchema = z.enum(['direct', 'group']);
 export const participantRoleSchema = z.enum(['owner', 'admin', 'member']);
@@ -31,3 +33,43 @@ export type Conversation = z.infer<typeof conversationSchema>;
 export type CreateConversationInput = z.infer<typeof createConversationSchema>;
 export type ConversationType = z.infer<typeof conversationTypeSchema>;
 export type ParticipantRole = z.infer<typeof participantRoleSchema>;
+
+// Pagination
+export const paginationCursorSchema = z.string();
+
+// List item - for GET /conversations response
+export const conversationListItemSchema = conversationSchema.extend({
+  participants: z.array(z.object({
+    user: userPublicSchema,
+    role: participantRoleSchema,
+  })),
+  lastMessage: messageSchema.pick({
+    id: true,
+    content: true,
+    senderId: true,
+    createdAt: true,
+  }).nullable(),
+  unreadCount: z.number(),
+});
+
+// Detail - for GET /conversations/:id response
+export const conversationDetailSchema = conversationSchema.extend({
+  createdBy: userPublicSchema,
+  participants: z.array(z.object({
+    user: userPublicSchema.extend({ lastSeenAt: z.string().datetime().nullable() }),
+    role: participantRoleSchema,
+    joinedAt: z.string().datetime(),
+  })),
+});
+
+// Create response
+export const conversationCreatedSchema = conversationSchema.extend({
+  participants: z.array(z.object({
+    user: userPublicSchema.pick({ id: true, username: true, displayName: true }),
+    role: participantRoleSchema,
+  })),
+});
+
+export type ConversationListItem = z.infer<typeof conversationListItemSchema>;
+export type ConversationDetail = z.infer<typeof conversationDetailSchema>;
+export type ConversationCreated = z.infer<typeof conversationCreatedSchema>;
