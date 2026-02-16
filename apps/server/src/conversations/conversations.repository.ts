@@ -1,7 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { eq, desc, and, inArray } from 'drizzle-orm';
 import { DRIZZLE } from '../database/database.module';
-import { conversations, conversationParticipants } from '@chat/db/schema';
+import { conversations, conversationParticipants } from '@chat/db';
 import type { CreateConversationInput } from '@chat/shared';
 
 @Injectable()

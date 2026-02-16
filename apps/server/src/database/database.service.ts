@@ -9,7 +9,7 @@ export class DatabaseService {
     try {
       await this.db.execute('SELECT 1');
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }

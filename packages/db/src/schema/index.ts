@@ -63,8 +63,10 @@ export const messages = pgTable('messages', {
   contentType: contentTypeEnum('content_type').default('text').notNull(),
   clientMessageId: varchar('client_message_id', { length: 64 }).unique(),
   status: messageStatusEnum('status').default('delivered').notNull(),
+  replyToId: uuid('reply_to_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => ({
   clientIdIdx: uniqueIndex('idx_messages_client_id').on(table.clientMessageId),
   convCreatedIdx: index('idx_messages_conversation_created').on(table.conversationId, table.createdAt.desc()),

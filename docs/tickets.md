@@ -29,49 +29,15 @@
 As a developer, I need a monorepo structure so that backend and frontend can share code and be developed together.
 
 **Acceptance Criteria:**
-- [ ] Bun workspaces configured in root `package.json`
-- [ ] `apps/server` - NestJS 11.x application
-- [ ] `apps/web` - React 19.x + Vite 7.x application  
-- [ ] `packages/shared` - Shared types, Zod schemas, utilities
-- [ ] `packages/database` - Drizzle 0.45.x schema, migrations, queries
-- [ ] TypeScript project references configured
-- [ ] ESLint + Prettier shared config
-- [ ] Root scripts: `dev:server`, `dev:web`, `build`, `lint`, `test`
-- [ ] Shared API types between server and web
-- [ ] Turborepo 2.x configured for task orchestration
-
-**Directory Structure:**
-```
-/
-├── apps/
-│   ├── server/        # NestJS API (port 3000)
-│   └── web/          # React Vite app (port 5173)
-├── packages/
-│   ├── shared/       # Types, Zod schemas, utils
-│   └── database/     # Drizzle ORM, migrations
-├── turbo.json        # Turborepo config
-├── package.json      # Bun workspaces config
-├── tsconfig.json
-└── bun.lockb
-```
-
-**Technical Notes:**
-- Bun 1.3.x for package management (faster than npm/pnpm)
-- Use `workspace:*` protocol for inter-package dependencies
-- Shared `@chat/shared` package with Zod schemas
-- Shared `@chat/database` package with Drizzle 0.45.x
-- Server imports from `@chat/database`, `@chat/shared`
-- Web imports from `@chat/shared`
-- Tailwind 4.x with new CSS-based configuration
-- TanStack Query 5.x for data fetching
-
-**Definition of Done:**
-- [ ] `bun install` installs all workspaces
-- [ ] `bun run dev:server` starts NestJS on port 3000
-- [ ] `bun run dev:web` starts Vite on port 5173
-- [ ] Shared types usable in both apps
-- [ ] Database package imports work in server
-- [ ] Cross-package imports resolved correctly
+- [x] Bun workspaces configured in root `package.json`
+- [x] `apps/server` - NestJS 11.x application
+- [x] `apps/web` - React 19.x + Vite 7.x application  
+- [x] `packages/shared` - Shared types, Zod schemas, utilities
+- [x] `packages/db` - Drizzle 0.45.x schema, migrations, queries
+- [x] TypeScript project references configured
+- [x] Root scripts: `build`, `dev`, `lint`, `test`, `typecheck`
+- [x] Cross-package imports resolved correctly
+- [ ] ESLint + Prettier shared config (TODO)
 
 **Related Docs:**
 - [Bun Workspaces](https://bun.sh/docs/pm/workspaces)

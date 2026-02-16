@@ -1,7 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, desc, and, isNull, lt, or, and } from 'drizzle-orm';
+import { eq, desc, and, isNull } from 'drizzle-orm';
 import { DRIZZLE } from '../database/database.module';
-import { messages } from '@chat/db/schema';
+import { messages } from '@chat/db';
 import type { SendMessageInput } from '@chat/shared';
 
 @Injectable()
@@ -17,7 +17,7 @@ export class MessagesRepository {
     return message || null;
   }
 
-  async findByConversation(conversationId: string, limit = 50, cursor?: string) {
+  async findByConversation(conversationId: string, limit = 50, _cursor?: string) {
     let query = this.db
       .select()
       .from(messages)
