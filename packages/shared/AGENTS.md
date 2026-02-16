@@ -1,35 +1,109 @@
-# AGENTS.md - Shared Package Guide
+# AGENTS.md - Shared Package
 
-> **Package:** `@chat/shared`  
-> **Purpose:** Single source of truth for types and validation schemas shared between frontend and backend
+> **Location:** `packages/shared`  
+> **Package:** `@chat/shared`
 
-## Overview
+## Purpose
 
-This package contains **Zod schemas** that define the data structures used across the entire application. Both frontend and backend import from here to ensure type safety and validation consistency.
+Centralized Zod schemas and TypeScript types shared between frontend and backend. This package is the **single source of truth** for all data structures.
 
-## Why Use Shared Schemas?
+## Rules
 
-1. **Single Source of Truth** - One schema defines validation for both FE and BE
-2. **Type Safety** - TypeScript types are automatically generated from Zod schemas
-3. **Runtime Validation** - Zod validates data at runtime, not just compile time
-4. **No Duplication** - Changes in one place propagate to both frontend and backend
+### 1. Schema Definition
+- All validation schemas MUST be defined in this package using Zod
+- NEVER define schemas in frontend or backend packages
+- Use `z.infer<>` to generate TypeScript types from schemas
+
+### 2. Export Pattern
+- Export schemas from `src/schemas/*.ts` files
+- Export everything from `src/index.ts`
+- Use named exports for schemas and types
+
+### 3. Schema Structure
+- One file per domain (auth.ts, user.ts, message.ts, conversation.ts)
+- Export both the schema and its inferred type
+- Use descriptive error messages in Zod validators
+
+### 4. Type Safety
+- NEVER manually write TypeScript interfaces that duplicate Zod schemas
+- ALWAYS use `z.infer<typeof schemaName>` for types
+- Import types from `@chat/shared` in both FE and BE
+
+### 5. Validation Usage
+- Backend: Use schemas in DTOs with `class-validator` decorators
+- Frontend: Use schemas with `zodResolver` for form validation
+- Both: Import types from shared package
+
+### 6. Modifying Schemas
+- When updating a schema, update it ONLY in this package
+- Changes automatically propagate to both FE and BE
+- Run typecheck in both packages after schema changes
+
+## File Structure
+
+```
+packages/shared/
+├── src/
+│   ├── schemas/
+│   │   ├── auth.ts          # Auth schemas (register, login, etc.)
+│   │   ├── user.ts          # User schemas
+│   │   ├── message.ts       # Message schemas
+│   │   └── conversation.ts  # Conversation schemas
+│   └── index.ts             # Export all schemas
+├── package.json
+└── AGENTS.md               # This file
+```
+
+## Available Schemas
+
+### Auth (`schemas/auth.ts`)
+- `registerSchema` → `RegisterInput`
+- `loginSchema` → `LoginInput`
+- `refreshTokenSchema` → `RefreshTokenInput`
+- `userResponseSchema` → `UserResponse`
+- `authResponseSchema` → `AuthResponse`
+
+### User (`schemas/user.ts`)
+- `userSchema` → `User`
+- `userPublicSchema` → `UserPublic`
+
+### Message (`schemas/message.ts`)
+- `messageSchema` → `Message`
+- `sendMessageSchema` → `SendMessageInput`
+- `messageStatusSchema` → `MessageStatus`
+
+### Conversation (`schemas/conversation.ts`)
+- `conversationSchema` → `Conversation`
+- `createConversationSchema` → `CreateConversationInput`
+- `conversationTypeSchema` → `ConversationType`
 
 ## Usage
 
 ### Backend (NestJS)
 
 ```typescript
-// In DTOs - use for validation
+// In DTO
 import { registerSchema, type RegisterInput } from '@chat/shared';
 
-// In Services - use types
-import type { UserResponse, AuthResponse } from '@chat/shared';
+export class RegisterDto implements RegisterInput {
+  @ApiProperty()
+  @IsEmail()
+  email: string;
+  // ... other fields from RegisterInput
+}
+
+// In Service
+import type { UserResponse } from '@chat/shared';
+
+async getUser(): Promise<UserResponse> {
+  // implementation
+}
 ```
 
 ### Frontend (React)
 
 ```typescript
-// In Forms - use for validation with react-hook-form
+// In Form Component
 import { registerSchema, type RegisterInput } from '@chat/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 
@@ -37,173 +111,55 @@ const form = useForm<RegisterInput>({
   resolver: zodResolver(registerSchema),
 });
 
-// In API calls - use types
+// In API Types
 import type { AuthResponse, UserResponse } from '@chat/shared';
 ```
 
-## Available Schemas
+## Commands
 
-### Auth (`schemas/auth.ts`)
+```bash
+# Type check shared package
+bun run typecheck
 
-**Schemas:**
-- `registerSchema` - User registration validation
-- `loginSchema` - Login validation  
-- `refreshTokenSchema` - Token refresh validation
-- `userResponseSchema` - User data from API
-- `authResponseSchema` - Login/register response
-
-**Types:**
-- `RegisterInput` - Registration form data
-- `LoginInput` - Login form data
-- `RefreshTokenInput` - Token refresh data
-- `UserResponse` - User data (createdAt as string)
-- `AuthResponse` - Auth response with token + user
-
-### User (`schemas/user.ts`)
-
-**Schemas:**
-- `userSchema` - Full user entity
-- `userPublicSchema` - Public user data (omits sensitive fields)
-
-**Types:**
-- `User` - Full user type
-- `UserPublic` - Public user type
-
-### Message (`schemas/message.ts`)
-
-**Schemas:**
-- `messageSchema` - Message entity
-- `sendMessageSchema` - Sending message validation
-- `messageStatusSchema` - Message status enum
-
-**Types:**
-- `Message` - Message type
-- `SendMessageInput` - Send message data
-- `MessageStatus` - 'sending' | 'delivered' | 'read' | 'error'
-
-### Conversation (`schemas/conversation.ts`)
-
-**Schemas:**
-- `conversationSchema` - Conversation entity
-- `conversationParticipantSchema` - Participant entity
-- `createConversationSchema` - Create conversation validation
-- `conversationTypeSchema` - 'direct' | 'group' enum
-
-**Types:**
-- `Conversation` - Conversation type
-- `ConversationParticipant` - Participant type
-- `CreateConversationInput` - Create conversation data
-- `ConversationType` - 'direct' | 'group'
-
-## Best Practices
-
-### 1. Always Use Shared Types
-
-```typescript
-// ✅ GOOD - Use shared types
-import type { UserResponse } from '@chat/shared';
-
-async function getUser(): Promise<UserResponse> {
-  // ...
-}
-
-// ❌ BAD - Don't duplicate types
-interface UserResponse {  // Don't do this!
-  id: string;
-  email: string;
-  // ...
-}
+# Build (if needed)
+bun run build
 ```
 
-### 2. Use Zod for Form Validation
+## Common Patterns
 
+### Creating a New Schema
+
+1. Add to appropriate file in `src/schemas/`
+2. Export both schema and type
+3. Export from `src/index.ts`
+4. Import in FE and BE
+
+Example:
 ```typescript
-// ✅ GOOD - Use shared schema for validation
-import { registerSchema, type RegisterInput } from '@chat/shared';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+// src/schemas/feature.ts
+import { z } from 'zod';
 
-const form = useForm<RegisterInput>({
-  resolver: zodResolver(registerSchema),
+export const featureSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1),
 });
 
-// ❌ BAD - Don't create separate validation
-const validation = {  // Don't do this!
-  email: z.string().email(),
-  // ...
-}
+export type Feature = z.infer<typeof featureSchema>;
 ```
 
-### 3. Keep Schemas in Sync
-
-When you need to change a data structure:
-1. Update the schema in `@chat/shared`
-2. Both FE and BE automatically get the changes
-3. TypeScript will show errors where updates are needed
-
-### 4. Use Type Inference
+### Schema with Refinement
 
 ```typescript
-// ✅ GOOD - Infer types from schemas
-export type RegisterInput = z.infer<typeof registerSchema>;
-
-// ❌ BAD - Don't manually write types
-export interface RegisterInput {  // Don't do this!
-  email: string;
-  // ...
-}
+export const passwordSchema = z.string()
+  .min(8, 'Password must be at least 8 characters')
+  .regex(/[A-Z]/, 'Must contain uppercase')
+  .regex(/[a-z]/, 'Must contain lowercase')
+  .regex(/[0-9]/, 'Must contain number');
 ```
 
-## Example: Complete Auth Flow
+## Important
 
-### 1. Define Schema (in `@chat/shared`)
-
-```typescript
-// schemas/auth.ts
-export const registerSchema = z.object({
-  email: z.string().email(),
-  username: z.string().min(3),
-  displayName: z.string().min(2),
-  password: z.string().min(8),
-});
-
-export type RegisterInput = z.infer<typeof registerSchema>;
-```
-
-### 2. Backend DTO (in `@chat/server`)
-
-```typescript
-// dto/register.dto.ts
-import { registerSchema, type RegisterInput } from '@chat/shared';
-
-export class RegisterDto implements RegisterInput {
-  // NestJS decorators here
-}
-```
-
-### 3. Frontend Form (in `@chat/web`)
-
-```typescript
-// components/RegisterForm.tsx
-import { registerSchema, type RegisterInput } from '@chat/shared';
-import { zodResolver } from '@hookform/resolvers/zod';
-
-const form = useForm<RegisterInput>({
-  resolver: zodResolver(registerSchema),
-});
-```
-
-## Important Notes
-
-- **Never** duplicate schema definitions
-- **Always** import from `@chat/shared`
-- **Use** `z.infer<>` for type inference
-- **Validate** all API inputs with Zod
-- **Sync** types automatically via the shared package
-
-## Adding New Schemas
-
-1. Create schema file in `src/schemas/`
-2. Export from `src/index.ts`
-3. Import in both FE and BE
-4. Use for validation and types
+- This package has ZERO dependencies on other workspace packages
+- Can be imported by any app or package in the monorepo
+- Keep schemas pure (no business logic)
+- Use string dates for API responses (JSON compatible)
