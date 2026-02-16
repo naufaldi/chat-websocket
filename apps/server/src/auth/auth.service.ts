@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
-import { UsersRepository } from '../users/users.repository';
+import { UsersRepository } from '../users';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
 
 @Injectable()
