@@ -3,14 +3,8 @@ import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
-import { useAuth } from './hooks/useAuth';
 import { Loader2 } from 'lucide-react';
-import { ChatPagePlaceholder } from './pages/ChatPagePlaceholder';
-
-// Placeholder for chat page (will be implemented in TASK-002)
-function ChatPage() {
-  return <ChatPagePlaceholder />;
-}
+import { ChatPage } from './pages/ChatPage';
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuthContext();
