@@ -5,32 +5,11 @@ import { RegisterPage } from './pages/RegisterPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
 import { Loader2 } from 'lucide-react';
+import { ChatPagePlaceholder } from './pages/ChatPagePlaceholder';
 
-// Placeholder for chat page (will be implemented in TASK-004)
+// Placeholder for chat page (will be implemented in TASK-002)
 function ChatPage() {
-  const { user, logout } = useAuth();
-
-  return (
-    <div className="min-h-screen bg-[#efeae2]">
-      <div className="bg-[#3390EC] text-white p-4 shadow-md">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-medium">Chat</h1>
-          <div className="flex items-center gap-4">
-            <span>{user?.displayName}</span>
-            <button
-              onClick={logout}
-              className="px-4 py-2 bg-[#2a7bc8] rounded-lg hover:bg-[#2369a8] transition-colors"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="max-w-4xl mx-auto p-4">
-        <p className="text-gray-600">Welcome to Chat! Start a conversation.</p>
-      </div>
-    </div>
-  );
+  return <ChatPagePlaceholder />;
 }
 
 function AppRoutes() {
