@@ -5,12 +5,13 @@ import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { registerSchema, type RegisterInput } from '@chat/shared/schemas/auth';
 import { useRegister } from '../../hooks/useAuth';
+import { extractRateLimitError } from '../../lib/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Loader2, UserPlus } from 'lucide-react';
+import { Loader2, UserPlus, Clock } from 'lucide-react';
 
 // Extend schema with confirmPassword
 const registerWithConfirmSchema = registerSchema.extend({
@@ -26,6 +27,7 @@ export function RegisterForm() {
   const navigate = useNavigate();
   const register = useRegister();
   const [error, setError] = useState<string>('');
+  const [retryAfter, setRetryAfter] = useState<number | null>(null);
 
   const {
     register: registerField,
@@ -37,6 +39,7 @@ export function RegisterForm() {
 
   const onSubmit = async (data: RegisterFormData) => {
     setError('');
+    setRetryAfter(null);
 
     try {
       // Extract relevant fields for registration
@@ -44,6 +47,14 @@ export function RegisterForm() {
       await register.mutateAsync(registerData);
       navigate('/');
     } catch (err: unknown) {
+      // Check for rate limit error first
+      const rateLimitError = extractRateLimitError(err);
+      if (rateLimitError.isRateLimited) {
+        setError(rateLimitError.message);
+        setRetryAfter(rateLimitError.retryAfter ?? null);
+        return;
+      }
+
       const axiosError = err as { response?: { data?: { message?: string } } };
       setError(axiosError.response?.data?.message || 'Registration failed');
     }
@@ -69,7 +80,15 @@ export function RegisterForm() {
       <CardContent className="space-y-6">
         {error && (
           <Alert variant="destructive" className="border-red-200 bg-red-50">
-            <AlertDescription>{error}</AlertDescription>
+            {retryAfter && <Clock className="h-4 w-4" />}
+            <AlertDescription className={retryAfter ? 'flex items-center gap-2' : ''}>
+              {error}
+              {retryAfter && (
+                <span className="text-xs text-red-600">
+                  (Retry in {retryAfter} seconds)
+                </span>
+              )}
+            </AlertDescription>
           </Alert>
         )}
 

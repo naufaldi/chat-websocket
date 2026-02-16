@@ -118,3 +118,53 @@ export const clearAuthToken = () => {
 
 // Helper to get auth token
 export const getAuthToken = () => localStorage.getItem('accessToken');
+
+// Rate limit error types
+export interface RateLimitError {
+  isRateLimited: boolean;
+  message: string;
+  retryAfter?: number; // seconds
+}
+
+// Extract rate limit error information from axios error
+export function extractRateLimitError(error: unknown): RateLimitError {
+  const axiosError = error as { response?: { status?: number; headers?: { 'retry-after'?: string } } };
+
+  if (axiosError.response?.status === 429) {
+    const retryAfterHeader = axiosError.response.headers?.['retry-after'];
+    let retryAfter: number | undefined;
+
+    if (retryAfterHeader) {
+      // Try to parse as seconds (number) or as HTTP date
+      const parsed = parseInt(retryAfterHeader, 10);
+      retryAfter = isNaN(parsed) ? undefined : parsed;
+    }
+
+    return {
+      isRateLimited: true,
+      message: retryAfter
+        ? `Too many attempts. Please try again in ${formatRetryTime(retryAfter)}.`
+        : 'Too many attempts. Please try again later.',
+      retryAfter,
+    };
+  }
+
+  return {
+    isRateLimited: false,
+    message: '',
+  };
+}
+
+// Format retry time for display
+function formatRetryTime(seconds: number): string {
+  if (seconds < 60) {
+    return `${seconds} second${seconds !== 1 ? 's' : ''}`;
+  }
+  const minutes = Math.ceil(seconds / 60);
+  return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+}
+
+// Format remaining time for display (for use in components)
+export function formatRemainingTime(seconds: number): string {
+  return formatRetryTime(seconds);
+}

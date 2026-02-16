@@ -4,12 +4,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { loginSchema, type LoginInput } from '@chat/shared/schemas/auth';
 import { useLogin } from '../../hooks/useAuth';
+import { extractRateLimitError } from '../../lib/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Loader2, MessageCircle } from 'lucide-react';
+import { Loader2, MessageCircle, Clock } from 'lucide-react';
 
 type LoginFormData = LoginInput;
 
@@ -17,6 +18,7 @@ export function LoginForm() {
   const navigate = useNavigate();
   const login = useLogin();
   const [error, setError] = useState<string>('');
+  const [retryAfter, setRetryAfter] = useState<number | null>(null);
 
   const {
     register,
@@ -28,11 +30,20 @@ export function LoginForm() {
 
   const onSubmit = async (data: LoginFormData) => {
     setError('');
+    setRetryAfter(null);
 
     try {
       await login.mutateAsync(data);
       navigate('/');
     } catch (err: unknown) {
+      // Check for rate limit error first
+      const rateLimitError = extractRateLimitError(err);
+      if (rateLimitError.isRateLimited) {
+        setError(rateLimitError.message);
+        setRetryAfter(rateLimitError.retryAfter ?? null);
+        return;
+      }
+
       const axiosError = err as { response?: { data?: { message?: string } } };
       setError(axiosError.response?.data?.message || 'Invalid email or password');
     }
@@ -57,7 +68,15 @@ export function LoginForm() {
       <CardContent className="space-y-6">
         {error && (
           <Alert variant="destructive" className="border-red-200 bg-red-50">
-            <AlertDescription>{error}</AlertDescription>
+            {retryAfter && <Clock className="h-4 w-4" />}
+            <AlertDescription className={retryAfter ? 'flex items-center gap-2' : ''}>
+              {error}
+              {retryAfter && (
+                <span className="text-xs text-red-600">
+                  (Retry in {retryAfter} seconds)
+                </span>
+              )}
+            </AlertDescription>
           </Alert>
         )}
 
