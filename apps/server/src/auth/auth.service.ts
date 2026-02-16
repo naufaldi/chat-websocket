@@ -3,18 +3,10 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
 import { UsersRepository } from '../users';
-import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
+import { RegisterDto, LoginDto, AuthResponseDto, UserDto } from './dto';
 
 interface TokenResponse {
   accessToken: string;
-}
-
-interface UserResponse {
-  id: string;
-  email: string;
-  username: string;
-  displayName: string;
-  createdAt: Date;
 }
 
 @Injectable()
@@ -58,15 +50,17 @@ export class AuthService {
     // Generate tokens
     const tokens = await this.generateTokens(user.id, user.email);
 
+    const userDto: UserDto = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      displayName: user.displayName,
+      createdAt: user.createdAt,
+    };
+
     return {
       accessToken: tokens.accessToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        displayName: user.displayName,
-        createdAt: user.createdAt,
-      },
+      user: userDto,
     };
   }
 
@@ -94,15 +88,17 @@ export class AuthService {
     // Generate tokens
     const tokens = await this.generateTokens(user.id, user.email);
 
+    const userDto: UserDto = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      displayName: user.displayName,
+      createdAt: user.createdAt,
+    };
+
     return {
       accessToken: tokens.accessToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        displayName: user.displayName,
-        createdAt: user.createdAt,
-      },
+      user: userDto,
     };
   }
 
@@ -111,7 +107,7 @@ export class AuthService {
     return { accessToken: tokens.accessToken };
   }
 
-  async getMe(userId: string): Promise<UserResponse> {
+  async getMe(userId: string): Promise<UserDto> {
     const user = await this.usersRepository.findById(userId);
     if (!user) {
       throw new UnauthorizedException('User not found');
