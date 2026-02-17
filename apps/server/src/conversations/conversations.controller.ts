@@ -1,0 +1,113 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+  ParseUUIDPipe,
+  DefaultValuePipe,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ConversationsService } from './conversations.service';
+import { createConversationSchema } from '@chat/shared';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
+
+@ApiTags('Conversations')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@Controller('conversations')
+export class ConversationsController {
+  constructor(private readonly conversationsService: ConversationsService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'List user conversations' })
+  @ApiQuery({ name: 'cursor', required: false, description: 'Pagination cursor' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Page size (default: 20, max: 100)' })
+  @ApiResponse({ status: 200, description: 'List of conversations' })
+  async findAll(
+    @Request() req: { user: { id: string } },
+    @Query('cursor') cursor?: string,
+    @Query('limit', new DefaultValuePipe(20), ParseUUIDPipe) limit?: number,
+  ) {
+    const safeLimit = Math.min(Math.max(1, limit || 20), 100);
+    return this.conversationsService.findAllByUser(req.user.id, cursor, safeLimit);
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Create a new conversation' })
+  @ApiResponse({ status: 201, description: 'Conversation created' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  async create(
+    @Request() req: { user: { id: string } },
+    @Body(new ZodValidationPipe(createConversationSchema)) data: {
+      type: 'direct' | 'group';
+      title?: string;
+      participantIds: string[];
+    },
+  ) {
+    return this.conversationsService.create(data, req.user.id);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get conversation details' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiResponse({ status: 200, description: 'Conversation details' })
+  @ApiResponse({ status: 403, description: 'Not a participant' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  async findOne(
+    @Request() req: { user: { id: string } },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.conversationsService.findById(id, req.user.id);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a conversation (owner only)' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiResponse({ status: 200, description: 'Conversation deleted' })
+  @ApiResponse({ status: 403, description: 'Not the owner' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  async delete(
+    @Request() req: { user: { id: string } },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.conversationsService.delete(id, req.user.id);
+  }
+
+  @Post(':id/join')
+  @ApiOperation({ summary: 'Join a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiResponse({ status: 201, description: 'Joined conversation' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  async join(
+    @Request() req: { user: { id: string } },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.conversationsService.join(id, req.user.id);
+  }
+
+  @Delete(':id/leave')
+  @ApiOperation({ summary: 'Leave a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiResponse({ status: 200, description: 'Left conversation' })
+  @ApiResponse({ status: 403, description: 'Owner cannot leave' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  async leave(
+    @Request() req: { user: { id: string } },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.conversationsService.leave(id, req.user.id);
+  }
+}
