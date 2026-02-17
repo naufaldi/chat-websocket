@@ -1,6 +1,7 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { conversationsApi } from '@/lib/api';
 import type { ConversationDetail } from '@/types/conversation';
+import type { CreateConversationInput } from '@chat/shared';
 
 export const conversationKeys = {
   all: ['conversations'] as const,
@@ -23,5 +24,16 @@ export function useConversation(id: string) {
     queryKey: conversationKeys.detail(id),
     queryFn: () => conversationsApi.get(id),
     enabled: !!id,
+  });
+}
+
+export function useCreateConversation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateConversationInput) => conversationsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
+    },
   });
 }

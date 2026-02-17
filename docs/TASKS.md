@@ -13,15 +13,15 @@
 | Phase | Task | Status | Est. Days | Swagger |
 |-------|------|--------|-----------|---------|
 | 0 | Foundation | ✅ Complete | 3 | - |
-| 1 | Authentication System | ✅ Complete* | 4 | ✅ |
-| 2 | Conversations API | ✅ Complete | 3 | ✅ |
+| 1 | Authentication System | ✅ Complete | 4 | ✅ |
+| 2 | Conversations API | 🟡 In Progress | 3 | ✅ |
 | 3 | WebSocket Gateway | ⏳ Pending | 4 | - |
 | 4 | Message System | ⏳ Pending | 5 | ✅ |
 | 5 | Read Receipts | ⏳ Pending | 4 | ✅ |
 | 6 | Presence System | ⏳ Pending | 3 | ✅ |
 | 7 | Deployment & Observability | ⏳ Pending | 3 | ✅ |
 
-**Total:** 29 days (~6 weeks) | **Completed:** 3/8 tasks
+**Total:** 29 days (~6 weeks) | **Completed:** 2/8 tasks | **In Progress:** 1/8 tasks
 
 > *Note: Auth system is now 100% complete. Rate limiting implemented (5 attempts/15min).
 
@@ -69,10 +69,8 @@ Each task includes:
 
 ## ✅ TASK-001: Authentication System
 
-**Status:** ✅ **COMPLETE** (95%)
+**Status:** ✅ **COMPLETE**
 **Priority:** 🔴 Critical | **Est:** 4 days | **Dependencies:** TASK-000
-
-> **Note:** Core auth complete. Rate limiting (5 attempts/15min) not implemented.
 
 ### Overview
 Complete authentication flow with JWT tokens, secure password handling, and protected routes.
@@ -89,10 +87,10 @@ GET    /api/auth/me                // Get current user
 // Implementation Details
 - Password hashing with Argon2id
 - JWT access token (15-min expiry)
-- JWT refresh token (7-day expiry, httpOnly cookie)
-- Token rotation on refresh
+- JWT refresh token (7-day expiry, returned in response body)
+- Token refresh returns new tokens; prior refresh tokens remain valid until expiry/logout
 - Rate limiting: 5 attempts per 15 min
-- Zod validation for all inputs
+- Validation: class-validator DTOs (backend), Zod schemas (frontend)
 ```
 
 ### Frontend Scope
@@ -113,7 +111,7 @@ useTokenRefresh()   - Automatic token refresh
 // Features
 - Form validation with React Hook Form + Zod
 - Automatic redirect after login
-- Token stored in localStorage (access) + cookie (refresh)
+- Token stored in localStorage (access + refresh)
 - Axios interceptors for 401 handling
 ```
 
@@ -236,12 +234,13 @@ DELETE /api/conversations/:id/leave    // Leave conversation
 
 // Query Parameters for GET /conversations
 ?cursor={opaque_string}   // Pagination cursor
-?limit={number}           // Page size (default: 50, max: 100)
+?limit={number}           // Page size (default: 20, max: 100)
 
 // Implementation Details
 - Cursor-based pagination (not offset)
-- Cursor = base64 encoded `(created_at, id)` tuple
+- Cursor = base64 encoded `(updated_at, id)` tuple
 - Authorization: Only participants can access
+- Response envelope: `{ data: { conversations, meta: { cursor, hasMore } } }`
 - Include participant count and last message preview
 - Soft delete with `deleted_at` column
 ```
@@ -261,19 +260,10 @@ useConversationDetails()    - Get single conversation
 
 // Features
 - Infinite scroll for conversation list
-- Real-time updates via WebSocket (deferred to TASK-003)
+- Real-time updates via WebSocket
 - Create 1:1 or group conversations
 - Leave/delete conversation
 ```
-
-### Implementation Update (2026-02-17)
-- [x] Fixed pagination query parsing bug (`limit` now uses integer pipe)
-- [x] Aligned backend conversation responses with shared Zod schema contracts
-- [x] Added users search endpoint: `GET /api/users/search?q=&limit=`
-- [x] Wired FE create modal to live user search (`useUsersSearch`)
-- [x] Implemented infinite scroll trigger in sidebar conversation list
-- [x] Added automated tests for backend conversation/user-search flows and frontend conversation hooks/modal
-- [ ] Real-time conversation updates remain pending under TASK-003 (WebSocket Gateway)
 
 ### Swagger Documentation
 ```yaml
@@ -373,34 +363,34 @@ curl "http://localhost:3000/api/conversations?limit=10" \
   -H "Authorization: Bearer {token}"
 
 # Verify
-- [x] Cursor pagination works correctly
-- [x] Only participants can access conversations
-- [x] Soft delete doesn't hard delete
-- [x] Last message preview included
+- [ ] Cursor pagination works correctly
+- [ ] Only participants can access conversations
+- [ ] Soft delete doesn't hard delete
+- [ ] Last message preview included
 ```
 
 **Frontend Tests:**
 ```bash
 # Manual testing
-- [x] Conversation list loads with pagination
-- [x] Create conversation modal works
-- [x] Join/leave conversation updates list
-- [x] Unread counts display correctly
-- [x] Clicking conversation opens chat
+- [ ] Conversation list loads with pagination
+- [ ] Create conversation modal works
+- [ ] Join/leave conversation updates list
+- [ ] Unread counts display correctly
+- [ ] Clicking conversation opens chat
 ```
 
 ### Definition of Done
 - [x] All conversation endpoints in Swagger
-- [x] Cursor pagination tested
-- [x] FE conversation list functional
-- [x] Create conversation flow works
+- [ ] Cursor pagination tested
+- [ ] FE conversation list functional (response envelope mismatch + infinite scroll pending)
+- [ ] Create conversation flow functional end-to-end (contact selection wiring pending)
 - [x] Authorization enforced
 
 ---
 
 ## ⏳ TASK-003: WebSocket Gateway
 
-**Status:** 🔄 **IN REVIEW**  
+**Status:** ⏳ **PENDING**  
 **Priority:** 🔴 Critical | **Est:** 4 days | **Dependencies:** TASK-002
 
 ### Overview
@@ -435,14 +425,11 @@ Authentication: JWT via query param ?token={jwt}
   messageId: string
   status: 'delivered'
   timestamp: string
-  conversationId: string
 }
 'message:error': {
   clientMessageId: string
+  error: string
   code: string
-  message: string
-  retryable: boolean
-  retryAfter?: number
 }
 'typing:started': { conversationId: string; userId: string }
 'typing:stopped': { conversationId: string; userId: string }
@@ -550,28 +537,12 @@ wscat -c "ws://localhost:3000/chat?token={valid_jwt}"
 ```
 
 ### Definition of Done
-- [x] WebSocket server running on `/chat`
-- [x] JWT authentication working
-- [x] All events handled correctly
+- [ ] WebSocket server running on `/chat`
+- [ ] JWT authentication working
+- [ ] All events handled correctly
 - [ ] Protocol documentation complete
-- [x] FE socket service implemented
-- [x] Reconnection handling tested
-
-### Verification Evidence (2026-02-17)
-
-**Automated verification**
-- [x] `bun run test` (root turbo): `@chat/server` 24 tests pass, `@chat/web` 17 tests pass
-- [x] `bun run typecheck` (root turbo): `@chat/shared`, `@chat/server`, `@chat/web` pass
-- [x] Contract assertions added for `message:sent` (with `conversationId`) and `message:error` (`retryable` + `retryAfter`)
-- [x] Coverage added for unsubscribe flow, typing broadcasts, disconnect/offline presence callback, and frontend socket hook lifecycle
-
-**Manual two-client runbook**
-- [ ] Client A and B connect with valid JWT to `/chat`
-- [ ] Both subscribe to same conversation and receive `subscribed`
-- [ ] A sends message; A receives `message:sent`; B receives `message:received`
-- [ ] Typing start/stop from A appears on B
-- [ ] Disconnect A; verify reconnect + resubscribe and conversation refresh sync path
-- [ ] Presence heartbeat + offline grace transition validated (`presence:update`)
+- [ ] FE socket service implemented
+- [ ] Reconnection handling tested
 
 ---
 

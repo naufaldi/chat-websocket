@@ -13,6 +13,7 @@ export const conversationSchema = z.object({
   createdBy: z.string().uuid(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+  deletedAt: z.string().datetime().nullable(),
 });
 
 export const createConversationSchema = z.object({

@@ -40,6 +40,7 @@ export const conversations = pgTable('conversations', {
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => ({
   updatedIdx: index('idx_conversations_updated').on(table.updatedAt.desc()),
 }));
