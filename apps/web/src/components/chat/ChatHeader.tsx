@@ -1,11 +1,13 @@
 import { MoreVertical } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 interface ChatHeaderProps {
   name: string;
   status?: string;
+  connectionStatus?: ReactNode;
 }
 
-export function ChatHeader({ name, status }: ChatHeaderProps) {
+export function ChatHeader({ name, status, connectionStatus }: ChatHeaderProps) {
   return (
     <div className="h-14 px-4 flex items-center justify-between border-b border-gray-200 bg-white shrink-0">
       <div className="flex items-center gap-3">
@@ -20,7 +22,10 @@ export function ChatHeader({ name, status }: ChatHeaderProps) {
         {/* Name and status */}
         <div>
           <div className="font-medium">{name}</div>
-          <div className="text-xs text-gray-500">{status || 'online'}</div>
+          <div className="text-xs text-gray-500 flex items-center gap-2">
+            <span>{status || 'online'}</span>
+            {connectionStatus}
+          </div>
         </div>
       </div>
 

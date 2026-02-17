@@ -1,18 +1,25 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useConversations } from '@/hooks/useConversations';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { ChatLayout } from '@/components/chat/ChatLayout';
 import { Sidebar } from '@/components/chat/Sidebar';
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { CreateChatModal } from '@/components/chat/CreateChatModal';
+import { TypingIndicator } from '@/components/chat/TypingIndicator';
+import { ConnectionStatus } from '@/components/chat/ConnectionStatus';
+import { useSocket } from '@/hooks/useSocket';
+import { useChatSocket } from '@/hooks/useChatSocket';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { conversationsApi } from '@/lib/api';
 import type { CreateConversationInput } from '@chat/shared/schemas/conversation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUsersSearch } from '@/hooks/useUsersSearch';
 
 export function ChatPage() {
+  const { user } = useAuthContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get('chat') || undefined;
   const queryClient = useQueryClient();
@@ -28,6 +35,17 @@ export function ChatPage() {
   );
 
   const selected = conversations.find((c) => c.id === selectedId);
+  const { status: connectionStatus, isConnected } = useSocket();
+  const { messages, typingUserIds, sendMessage, sendTypingStart, sendTypingStop } = useChatSocket({
+    conversationId: selectedId,
+    currentUserId: user?.id,
+    enabled: isConnected,
+  });
+  const { onInputActivity } = useTypingIndicator({
+    conversationId: selectedId,
+    onTypingStart: () => sendTypingStart(),
+    onTypingStop: () => sendTypingStop(),
+  });
 
   const createMutation = useMutation({
     mutationFn: (data: CreateConversationInput) => conversationsApi.create(data),
@@ -81,8 +99,7 @@ export function ChatPage() {
   };
 
   const handleSendMessage = (content: string) => {
-    // TODO: Integrate with WebSocket or API
-    console.log('Send message:', content);
+    sendMessage(content);
   };
 
   // Get display name for conversation
@@ -92,6 +109,12 @@ export function ChatPage() {
     const otherParticipant = conversation.participants.find((p) => p.role !== 'owner');
     return otherParticipant?.user.displayName || otherParticipant?.user.username || 'Direct Chat';
   };
+
+  const typingNames = selected
+    ? selected.participants
+        .filter((participant) => typingUserIds.includes(participant.user.id) && participant.user.id !== user?.id)
+        .map((participant) => participant.user.displayName || participant.user.username)
+    : [];
 
   return (
     <ChatLayout
@@ -113,18 +136,30 @@ export function ChatPage() {
     >
       {selected ? (
         <>
-          <ChatHeader name={getDisplayName(selected)} status="online" />
+          <ChatHeader
+            name={getDisplayName(selected)}
+            status={isConnected ? 'online' : 'offline'}
+            connectionStatus={<ConnectionStatus status={connectionStatus} />}
+          />
           <div className="flex-1 overflow-y-auto p-4 bg-white">
-            {/* TODO: Replace with actual messages from API */}
-            <MessageBubble content="Hey! How are you?" timestamp={new Date().toISOString()} isSent={false} />
-            <MessageBubble
-              content="I'm doing great, thanks!"
-              timestamp={new Date().toISOString()}
-              isSent={true}
-              isRead={true}
-            />
+            {messages.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-sm text-gray-400">
+                No messages yet. Start the conversation.
+              </div>
+            ) : (
+              messages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  content={message.content}
+                  timestamp={message.createdAt}
+                  isSent={message.senderId === user?.id}
+                  isRead={message.status === 'read' || message.status === 'delivered'}
+                />
+              ))
+            )}
           </div>
-          <MessageInput onSend={handleSendMessage} />
+          <TypingIndicator names={typingNames} />
+          <MessageInput onSend={handleSendMessage} onTextChange={onInputActivity} />
         </>
       ) : (
         <div className="flex-1 flex items-center justify-center bg-gray-50">
