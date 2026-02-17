@@ -32,6 +32,7 @@ import {
 } from '@chat/shared';
 import { TokenBlacklistService } from '../auth/token-blacklist.service';
 import { ChatService } from './chat.service';
+import { PresenceService } from './presence.service';
 
 interface JwtPayload {
   sub: string;
@@ -60,6 +61,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly configService: ConfigService,
     private readonly tokenBlacklistService: TokenBlacklistService,
     private readonly chatService: ChatService,
+    private readonly presenceService: PresenceService,
   ) {}
 
   async handleConnection(client: SocketWithUserData): Promise<void> {
@@ -91,6 +93,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleDisconnect(client: SocketWithUserData): void {
     this.logger.debug(`Socket disconnected: ${client.id}`);
+    const userId = client.data.userId;
+    if (!userId) {
+      return;
+    }
+    this.presenceService.scheduleOffline(userId, () => {
+      this.server.emit(
+        'presence:update',
+        presenceUpdateEventSchema.parse({
+          userId,
+          status: 'offline',
+        }),
+      );
+    });
   }
 
   @SubscribeMessage('subscribe')
@@ -170,6 +185,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           messageId: message.id,
           status: 'delivered',
           timestamp: message.createdAt,
+          conversationId: message.conversationId,
         }),
       );
 
@@ -177,9 +193,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         .to(this.toConversationRoom(parse.data.conversationId))
         .emit('message:received', messageReceivedEventSchema.parse({ message }));
     } catch (error) {
-      const { message, code } = this.resolveSocketError(error);
+      const { message, code, retryAfter } = this.resolveSocketError(error);
       const msg = message || 'Failed to send message';
-      this.emitMessageError(client, parse.data.clientMessageId, msg, code);
+      this.emitMessageError(client, parse.data.clientMessageId, msg, code, retryAfter);
     }
   }
 
@@ -234,6 +250,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    await this.presenceService.refreshHeartbeat(userId, parse.data.status);
+
     this.server.emit(
       'presence:update',
       presenceUpdateEventSchema.parse({
@@ -259,15 +277,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private emitMessageError(
     client: SocketWithUserData,
     clientMessageId: string | undefined,
-    error: string,
-    code: 'AUTH_FAILED' | 'RATE_LIMITED' | 'NOT_IN_CONVERSATION' | 'VALIDATION_ERROR',
+    message: string,
+    code: 'AUTH_FAILED' | 'RATE_LIMITED' | 'NOT_IN_CONVERSATION' | 'VALIDATION_ERROR' | 'DB_ERROR' | 'REDIS_UNAVAILABLE' | 'INTERNAL_ERROR',
+    retryAfter?: number,
   ): void {
     client.emit(
       'message:error',
       messageErrorEventSchema.parse({
         clientMessageId: clientMessageId ?? crypto.randomUUID(),
-        error,
+        message,
         code,
+        retryable: code === 'RATE_LIMITED' || code === 'DB_ERROR' || code === 'REDIS_UNAVAILABLE' || code === 'INTERNAL_ERROR',
+        retryAfter,
+        context: {
+          event: 'message:send',
+          timestamp: new Date().toISOString(),
+        },
       }),
     );
   }
@@ -286,25 +311,38 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private resolveSocketError(error: unknown): {
     message: string;
-    code: 'AUTH_FAILED' | 'RATE_LIMITED' | 'NOT_IN_CONVERSATION' | 'VALIDATION_ERROR';
+    code: 'AUTH_FAILED' | 'RATE_LIMITED' | 'NOT_IN_CONVERSATION' | 'VALIDATION_ERROR' | 'DB_ERROR' | 'REDIS_UNAVAILABLE' | 'INTERNAL_ERROR';
+    retryAfter?: number;
   } {
     if (error instanceof HttpException) {
       const response = error.getResponse() as
-        | { error?: { code?: unknown; message?: unknown } }
+        | { error?: { code?: unknown; message?: unknown; retryAfterMs?: unknown } }
         | string;
       if (typeof response === 'object' && response?.error) {
         const code = response.error.code;
         const message = response.error.message;
-        if (code === 'RATE_LIMITED' || code === 'NOT_IN_CONVERSATION' || code === 'AUTH_FAILED') {
+        const retryAfterMs = response.error.retryAfterMs;
+        const retryAfter = typeof retryAfterMs === 'number' ? Math.ceil(retryAfterMs / 1000) : undefined;
+        if (
+          code === 'RATE_LIMITED' ||
+          code === 'NOT_IN_CONVERSATION' ||
+          code === 'AUTH_FAILED' ||
+          code === 'VALIDATION_ERROR' ||
+          code === 'DB_ERROR' ||
+          code === 'REDIS_UNAVAILABLE' ||
+          code === 'INTERNAL_ERROR'
+        ) {
           return {
             code,
             message: typeof message === 'string' ? message : error.message,
+            retryAfter,
           };
         }
       }
       return {
         code: error.getStatus() === 429 ? 'RATE_LIMITED' : 'NOT_IN_CONVERSATION',
         message: error.message,
+        retryAfter: error.getStatus() === 429 ? 60 : undefined,
       };
     }
 
@@ -313,6 +351,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return {
       code: fallbackMessage.includes('Too many messages') ? 'RATE_LIMITED' : 'NOT_IN_CONVERSATION',
       message: fallbackMessage,
+      retryAfter: fallbackMessage.includes('Too many messages') ? 60 : undefined,
     };
   }
 }

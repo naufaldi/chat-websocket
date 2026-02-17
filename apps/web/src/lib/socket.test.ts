@@ -113,11 +113,37 @@ describe('ChatSocketService', () => {
       messageId: '33333333-3333-4333-8333-333333333333',
       status: 'delivered',
       timestamp: '2026-01-01T00:00:00.000Z',
+      conversationId: '11111111-1111-4111-8111-111111111111',
     };
 
     expect(serverToClientEventSchemas['message:sent'].safeParse(backendPayload).success).toBe(true);
     socket.trigger('message:sent', backendPayload);
 
     expect(onMessageSent).toHaveBeenCalledWith(backendPayload);
+  });
+
+  it('accepts backend message:error payload with retry metadata', () => {
+    const socket = createMockSocket();
+    const service = createChatSocketService({
+      createSocket: () => socket,
+      getToken: () => 'token',
+    });
+    const onMessageError = vi.fn();
+
+    service.connect();
+    service.on('message:error', onMessageError);
+
+    const backendPayload = {
+      clientMessageId: '22222222-2222-4222-8222-222222222222',
+      code: 'RATE_LIMITED',
+      message: 'Too many messages. Please retry later.',
+      retryable: true,
+      retryAfter: 30,
+    };
+
+    expect(serverToClientEventSchemas['message:error'].safeParse(backendPayload).success).toBe(true);
+    socket.trigger('message:error', backendPayload);
+
+    expect(onMessageError).toHaveBeenCalledWith(backendPayload);
   });
 });

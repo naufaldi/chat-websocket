@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Message } from '@chat/shared/schemas/message';
 import { chatSocketService, type ChatSocketService } from '@/lib/socket';
 
@@ -16,6 +16,7 @@ interface UseChatSocketOptions {
   currentUserId?: string;
   enabled?: boolean;
   service?: ChatSocketService;
+  onReconnectSync?: (payload: { conversationId: string; disconnectedAt: string }) => void;
 }
 
 export function useChatSocket(options: UseChatSocketOptions = {}) {
@@ -24,10 +25,12 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
     currentUserId,
     enabled = true,
     service = chatSocketService,
+    onReconnectSync,
   } = options;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingUserIds, setTypingUserIds] = useState<string[]>([]);
+  const disconnectedAtRef = useRef<string | null>(null);
 
   useEffect(() => {
     setMessages([]);
@@ -45,6 +48,30 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
       service.unsubscribe(conversationId);
     };
   }, [conversationId, enabled, service]);
+
+  useEffect(() => {
+    if (!enabled || !conversationId) {
+      return;
+    }
+
+    return service.onConnectionStatusChange((status) => {
+      if (status === 'disconnected' || status === 'reconnecting') {
+        if (!disconnectedAtRef.current) {
+          disconnectedAtRef.current = new Date().toISOString();
+        }
+        return;
+      }
+
+      if (status === 'connected' && disconnectedAtRef.current) {
+        service.subscribe(conversationId);
+        onReconnectSync?.({
+          conversationId,
+          disconnectedAt: disconnectedAtRef.current,
+        });
+        disconnectedAtRef.current = null;
+      }
+    });
+  }, [conversationId, enabled, onReconnectSync, service]);
 
   useEffect(() => {
     const offMessageReceived = service.on('message:received', ({ message }) => {

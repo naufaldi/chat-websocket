@@ -6,6 +6,9 @@ export const websocketErrorCodeSchema = z.enum([
   'RATE_LIMITED',
   'NOT_IN_CONVERSATION',
   'VALIDATION_ERROR',
+  'DB_ERROR',
+  'REDIS_UNAVAILABLE',
+  'INTERNAL_ERROR',
 ]);
 
 export const presenceStatusSchema = z.enum(['online', 'away', 'offline']);
@@ -64,12 +67,19 @@ export const messageSentEventSchema = z.object({
   messageId: z.string().uuid(),
   status: z.literal('delivered'),
   timestamp: z.string().datetime(),
+  conversationId: z.string().uuid(),
 });
 
 export const messageErrorEventSchema = z.object({
   clientMessageId: z.string().uuid(),
-  error: z.string().min(1),
   code: websocketErrorCodeSchema,
+  message: z.string().min(1),
+  retryable: z.boolean(),
+  retryAfter: z.number().int().positive().optional(),
+  context: z.object({
+    event: z.string().min(1),
+    timestamp: z.string().datetime(),
+  }).optional(),
 });
 
 export const typingStartedEventSchema = z.object({

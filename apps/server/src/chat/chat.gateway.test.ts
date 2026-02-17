@@ -6,6 +6,7 @@ import { TokenBlacklistService } from '../auth/token-blacklist.service';
 import { ChatGateway } from './chat.gateway';
 import type { Message, SendMessageInput } from '@chat/shared';
 import { serverToClientEventSchemas } from '@chat/shared';
+import { PresenceService } from './presence.service';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 const CONVERSATION_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -20,7 +21,15 @@ function createChatServiceMock() {
   };
 }
 
+function createPresenceServiceMock() {
+  return {
+    refreshHeartbeat: vi.fn(),
+    scheduleOffline: vi.fn(),
+  };
+}
+
 function createClientMock(token = 'token') {
+  const roomEmit = vi.fn();
   return {
     handshake: { query: { token } },
     data: {} as Record<string, unknown>,
@@ -28,6 +37,8 @@ function createClientMock(token = 'token') {
     disconnect: vi.fn(),
     join: vi.fn(),
     leave: vi.fn(),
+    to: vi.fn().mockReturnValue({ emit: roomEmit }),
+    __roomEmit: roomEmit,
   };
 }
 
@@ -36,6 +47,7 @@ describe('ChatGateway', () => {
   let configService: Pick<ConfigService, 'get'>;
   let tokenBlacklistService: Pick<TokenBlacklistService, 'isBlacklisted'>;
   let chatService: ReturnType<typeof createChatServiceMock>;
+  let presenceService: ReturnType<typeof createPresenceServiceMock>;
   let gateway: ChatGateway;
   let roomEmit: ReturnType<typeof vi.fn>;
 
@@ -50,15 +62,18 @@ describe('ChatGateway', () => {
       isBlacklisted: vi.fn().mockReturnValue(false),
     };
     chatService = createChatServiceMock();
+    presenceService = createPresenceServiceMock();
     gateway = new ChatGateway(
       jwtService as JwtService,
       configService as ConfigService,
       tokenBlacklistService as TokenBlacklistService,
       chatService as never,
+      presenceService as unknown as PresenceService,
     );
     roomEmit = vi.fn();
     gateway.server = {
       to: vi.fn().mockReturnValue({ emit: roomEmit }),
+      emit: vi.fn(),
     } as never;
   });
 
@@ -96,6 +111,16 @@ describe('ChatGateway', () => {
     expect(client.emit).toHaveBeenCalledWith('subscribed', { conversationId: CONVERSATION_ID });
   });
 
+  it('leaves conversation room and emits unsubscribed event', async () => {
+    const client = createClientMock();
+    client.data.userId = USER_ID;
+
+    await gateway.handleUnsubscribe(client as never, { conversationId: CONVERSATION_ID });
+
+    expect(client.leave).toHaveBeenCalledWith(`conversation:${CONVERSATION_ID}`);
+    expect(client.emit).toHaveBeenCalledWith('unsubscribed', { conversationId: CONVERSATION_ID });
+  });
+
   it('emits validation error for invalid message payload', async () => {
     const client = createClientMock();
     client.data.userId = USER_ID;
@@ -104,8 +129,12 @@ describe('ChatGateway', () => {
 
     expect(client.emit).toHaveBeenCalledWith('message:error', {
       clientMessageId: expect.any(String),
-      error: 'Invalid payload',
+      message: 'Invalid payload',
       code: 'VALIDATION_ERROR',
+      retryable: false,
+      context: expect.objectContaining({
+        event: 'message:send',
+      }),
     });
   });
 
@@ -140,6 +169,7 @@ describe('ChatGateway', () => {
       messageId: MESSAGE_ID,
       status: 'delivered',
       timestamp: message.createdAt,
+      conversationId: CONVERSATION_ID,
     });
     expect(roomEmit).toHaveBeenCalledWith('message:received', { message });
   });
@@ -155,9 +185,28 @@ describe('ChatGateway', () => {
 
     await gateway.handlePresenceHeartbeat(client as never, { status: 'online' });
 
+    expect(presenceService.refreshHeartbeat).toHaveBeenCalledWith(USER_ID, 'online');
     expect(serverEmit).toHaveBeenCalledWith('presence:update', {
       userId: USER_ID,
       status: 'online',
+    });
+  });
+
+  it('broadcasts typing started and stopped to room peers', async () => {
+    const client = createClientMock();
+    client.data.userId = USER_ID;
+
+    await gateway.handleTypingStart(client as never, { conversationId: CONVERSATION_ID });
+    await gateway.handleTypingStop(client as never, { conversationId: CONVERSATION_ID });
+
+    expect(client.to).toHaveBeenCalledWith(`conversation:${CONVERSATION_ID}`);
+    expect(client.__roomEmit).toHaveBeenNthCalledWith(1, 'typing:started', {
+      conversationId: CONVERSATION_ID,
+      userId: USER_ID,
+    });
+    expect(client.__roomEmit).toHaveBeenNthCalledWith(2, 'typing:stopped', {
+      conversationId: CONVERSATION_ID,
+      userId: USER_ID,
     });
   });
 
@@ -206,6 +255,7 @@ describe('ChatGateway', () => {
           error: {
             code: 'RATE_LIMITED',
             message: 'Too many messages. Please retry later.',
+            retryAfterMs: 30_000,
           },
         },
         HttpStatus.TOO_MANY_REQUESTS,
@@ -221,10 +271,36 @@ describe('ChatGateway', () => {
       clientMessageId: CLIENT_MESSAGE_ID,
     });
 
-    expect(client.emit).toHaveBeenCalledWith('message:error', {
-      clientMessageId: CLIENT_MESSAGE_ID,
-      error: expect.any(String),
-      code: 'RATE_LIMITED',
+    expect(client.emit).toHaveBeenCalledWith(
+      'message:error',
+      expect.objectContaining({
+        clientMessageId: CLIENT_MESSAGE_ID,
+        message: expect.any(String),
+        code: 'RATE_LIMITED',
+        retryable: true,
+        retryAfter: expect.any(Number),
+      }),
+    );
+  });
+
+  it('emits offline presence update after disconnect grace callback', () => {
+    const client = createClientMock();
+    client.data.userId = USER_ID;
+    const serverEmit = vi.fn();
+    gateway.server = {
+      to: vi.fn().mockReturnValue({ emit: roomEmit }),
+      emit: serverEmit,
+    } as never;
+    presenceService.scheduleOffline.mockImplementation((_userId, onOffline) => {
+      onOffline();
+    });
+
+    gateway.handleDisconnect(client as never);
+
+    expect(presenceService.scheduleOffline).toHaveBeenCalledWith(USER_ID, expect.any(Function));
+    expect(serverEmit).toHaveBeenCalledWith('presence:update', {
+      userId: USER_ID,
+      status: 'offline',
     });
   });
 });

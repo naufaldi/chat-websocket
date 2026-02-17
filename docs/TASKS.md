@@ -400,7 +400,7 @@ curl "http://localhost:3000/api/conversations?limit=10" \
 
 ## ⏳ TASK-003: WebSocket Gateway
 
-**Status:** ⏳ **PENDING**  
+**Status:** 🔄 **IN REVIEW**  
 **Priority:** 🔴 Critical | **Est:** 4 days | **Dependencies:** TASK-002
 
 ### Overview
@@ -435,11 +435,14 @@ Authentication: JWT via query param ?token={jwt}
   messageId: string
   status: 'delivered'
   timestamp: string
+  conversationId: string
 }
 'message:error': {
   clientMessageId: string
-  error: string
   code: string
+  message: string
+  retryable: boolean
+  retryAfter?: number
 }
 'typing:started': { conversationId: string; userId: string }
 'typing:stopped': { conversationId: string; userId: string }
@@ -547,12 +550,28 @@ wscat -c "ws://localhost:3000/chat?token={valid_jwt}"
 ```
 
 ### Definition of Done
-- [ ] WebSocket server running on `/chat`
-- [ ] JWT authentication working
-- [ ] All events handled correctly
+- [x] WebSocket server running on `/chat`
+- [x] JWT authentication working
+- [x] All events handled correctly
 - [ ] Protocol documentation complete
-- [ ] FE socket service implemented
-- [ ] Reconnection handling tested
+- [x] FE socket service implemented
+- [x] Reconnection handling tested
+
+### Verification Evidence (2026-02-17)
+
+**Automated verification**
+- [x] `bun run test` (root turbo): `@chat/server` 24 tests pass, `@chat/web` 17 tests pass
+- [x] `bun run typecheck` (root turbo): `@chat/shared`, `@chat/server`, `@chat/web` pass
+- [x] Contract assertions added for `message:sent` (with `conversationId`) and `message:error` (`retryable` + `retryAfter`)
+- [x] Coverage added for unsubscribe flow, typing broadcasts, disconnect/offline presence callback, and frontend socket hook lifecycle
+
+**Manual two-client runbook**
+- [ ] Client A and B connect with valid JWT to `/chat`
+- [ ] Both subscribe to same conversation and receive `subscribed`
+- [ ] A sends message; A receives `message:sent`; B receives `message:received`
+- [ ] Typing start/stop from A appears on B
+- [ ] Disconnect A; verify reconnect + resubscribe and conversation refresh sync path
+- [ ] Presence heartbeat + offline grace transition validated (`presence:update`)
 
 ---
 

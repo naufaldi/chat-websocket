@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { RedisIoAdapter } from './chat/redis-io.adapter';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -18,6 +19,17 @@ async function bootstrap(): Promise<void> {
     whitelist: true,
     transform: true,
   }));
+
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl) {
+    const redisAdapter = new RedisIoAdapter(app);
+    try {
+      await redisAdapter.connectToRedis(redisUrl);
+      app.useWebSocketAdapter(redisAdapter);
+    } catch (error) {
+      console.warn(`WebSocket Redis adapter unavailable, falling back to in-memory adapter: ${String(error)}`);
+    }
+  }
 
   // Swagger setup
   const config = new DocumentBuilder()

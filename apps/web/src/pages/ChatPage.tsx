@@ -40,6 +40,9 @@ export function ChatPage() {
     conversationId: selectedId,
     currentUserId: user?.id,
     enabled: isConnected,
+    onReconnectSync: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
   });
   const { onInputActivity } = useTypingIndicator({
     conversationId: selectedId,

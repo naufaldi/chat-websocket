@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { SendMessageInput } from '@chat/shared';
 import { messageSchema } from '@chat/shared';
 import { ChatService } from './chat.service';
@@ -25,14 +26,19 @@ function createConversationsRepositoryMock() {
 describe('ChatService', () => {
   let messagesRepository: ReturnType<typeof createMessagesRepositoryMock>;
   let conversationsRepository: ReturnType<typeof createConversationsRepositoryMock>;
+  let configService: Pick<ConfigService, 'get'>;
   let service: ChatService;
 
   beforeEach(() => {
     messagesRepository = createMessagesRepositoryMock();
     conversationsRepository = createConversationsRepositoryMock();
+    configService = {
+      get: vi.fn().mockReturnValue(undefined),
+    };
     service = new ChatService(
       messagesRepository as never,
       conversationsRepository as never,
+      configService as ConfigService,
     );
   });
 
@@ -137,6 +143,41 @@ describe('ChatService', () => {
       response: {
         error: {
           code: 'RATE_LIMITED',
+        },
+      },
+    });
+  });
+
+  it('rejects in-flight duplicate clientMessageId when record is not visible yet', async () => {
+    conversationsRepository.isUserParticipant.mockResolvedValue(true);
+    messagesRepository.findByClientMessageId.mockResolvedValue(null);
+    messagesRepository.create.mockResolvedValue({
+      id: MESSAGE_ID,
+      conversationId: CONVERSATION_ID,
+      senderId: USER_ID,
+      content: 'hello',
+      contentType: 'text',
+      clientMessageId: CLIENT_MESSAGE_ID,
+      status: 'delivered',
+      replyToId: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      deletedAt: null,
+    });
+
+    const input: SendMessageInput = {
+      conversationId: CONVERSATION_ID,
+      content: 'hello',
+      contentType: 'text',
+      clientMessageId: CLIENT_MESSAGE_ID,
+    };
+
+    await service.sendMessage(USER_ID, input);
+
+    await expect(service.sendMessage(USER_ID, input)).rejects.toMatchObject({
+      response: {
+        error: {
+          code: 'DB_ERROR',
         },
       },
     });
