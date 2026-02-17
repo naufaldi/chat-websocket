@@ -1,17 +1,16 @@
-import { z } from 'zod';
 import axios from 'axios';
 import type { LoginInput, RegisterInput, UserResponse, AuthResponse } from '@chat/shared/schemas/auth';
 import {
-  conversationListItemSchema,
+  conversationsListResponseSchema,
   conversationDetailSchema,
   conversationCreatedSchema,
 } from '@chat/shared/schemas/conversation';
 import type {
-  ConversationListItem,
   ConversationDetail,
   ConversationCreated,
   CreateConversationInput,
 } from '@chat/shared/schemas/conversation';
+import { userSearchResponseSchema } from '@chat/shared/schemas/user';
 import type { ConversationsQueryResponse } from '@/types/conversation';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -124,13 +123,7 @@ export const conversationsApi = {
     if (cursor) params.set('cursor', cursor);
     params.set('limit', String(limit));
     const response = await api.get('/conversations', { params });
-    // Validate response against Zod schema
-    const data = response.data;
-    return {
-      conversations: z.array(conversationListItemSchema).parse(data.conversations),
-      nextCursor: data.nextCursor,
-      hasMore: data.hasMore,
-    };
+    return conversationsListResponseSchema.parse(response.data);
   },
 
   get: async (id: string): Promise<ConversationDetail> => {
@@ -149,6 +142,16 @@ export const conversationsApi = {
 
   leave: async (id: string): Promise<void> => {
     await api.delete(`/conversations/${id}/leave`);
+  },
+};
+
+export const usersApi = {
+  search: async (query: string, limit = 20) => {
+    const params = new URLSearchParams();
+    params.set('q', query);
+    params.set('limit', String(limit));
+    const response = await api.get('/users/search', { params });
+    return userSearchResponseSchema.parse(response.data);
   },
 };
 

@@ -10,17 +10,22 @@ import { CreateChatModal } from '@/components/chat/CreateChatModal';
 import { conversationsApi } from '@/lib/api';
 import type { CreateConversationInput } from '@chat/shared/schemas/conversation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useUsersSearch } from '@/hooks/useUsersSearch';
 
 export function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get('chat') || undefined;
   const queryClient = useQueryClient();
 
-  const { data } = useConversations();
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useConversations();
   // Data structure: { conversations: ConversationListItem[], nextCursor, hasMore }
   const conversations = data?.pages.flatMap((page) => page.conversations) || [];
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [contactSearchQuery, setContactSearchQuery] = useState('');
+  const { data: usersSearchData, isLoading: isSearchingUsers } = useUsersSearch(
+    showCreateModal ? contactSearchQuery : ''
+  );
 
   const selected = conversations.find((c) => c.id === selectedId);
 
@@ -98,6 +103,11 @@ export function ChatPage() {
           onCreateChat={() => setShowCreateModal(true)}
           onLeave={handleLeave}
           onDelete={handleDelete}
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          onFetchNextPage={() => {
+            void fetchNextPage();
+          }}
         />
       }
     >
@@ -129,6 +139,9 @@ export function ChatPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreate={handleCreateConversation}
+        contacts={usersSearchData?.users ?? []}
+        isSearching={isSearchingUsers}
+        onSearchQueryChange={setContactSearchQuery}
       />
     </ChatLayout>
   );

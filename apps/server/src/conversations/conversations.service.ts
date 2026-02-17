@@ -1,20 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ConversationsRepository } from './conversations.repository';
 import type { CreateConversationInput } from '@chat/shared';
-import { userPublicSchema } from '@chat/shared';
-
-interface ParticipantWithUser {
-  id: string;
-  conversationId: string;
-  userId: string;
-  role: 'owner' | 'admin' | 'member';
-  joinedAt: Date;
-  email: string;
-  username: string;
-  displayName: string;
-  avatarUrl: string | null;
-  lastSeenAt: Date | null;
-}
 
 @Injectable()
 export class ConversationsService {
@@ -48,6 +34,7 @@ export class ConversationsService {
               username: p.username,
               displayName: p.displayName,
               avatarUrl: p.avatarUrl,
+              lastSeenAt: p.lastSeenAt?.toISOString() ?? null,
             },
             role: p.role,
           })),
@@ -66,13 +53,9 @@ export class ConversationsService {
     );
 
     return {
-      data: {
-        conversations: conversationsWithDetails,
-        meta: {
-          cursor: nextCursor,
-          hasMore: nextCursor !== null,
-        },
-      },
+      conversations: conversationsWithDetails,
+      nextCursor,
+      hasMore: nextCursor !== null,
     };
   }
 
@@ -81,20 +64,21 @@ export class ConversationsService {
     const participants = await this.repository.findParticipants(conversation.id);
 
     return {
-      data: {
-        id: conversation.id,
-        type: conversation.type,
-        title: conversation.title,
-        createdAt: conversation.createdAt.toISOString(),
-        participants: participants.map((p) => ({
-          user: {
-            id: p.userId,
-            username: p.username,
-            displayName: p.displayName,
-          },
-          role: p.role,
-        })),
-      },
+      id: conversation.id,
+      type: conversation.type,
+      title: conversation.title,
+      avatarUrl: conversation.avatarUrl,
+      createdBy: conversation.createdBy,
+      createdAt: conversation.createdAt.toISOString(),
+      updatedAt: conversation.updatedAt.toISOString(),
+      participants: participants.map((p) => ({
+        user: {
+          id: p.userId,
+          username: p.username,
+          displayName: p.displayName,
+        },
+        role: p.role,
+      })),
     };
   }
 
@@ -127,35 +111,42 @@ export class ConversationsService {
     const participants = await this.repository.findParticipants(conversationId);
     const createdByUser = participants.find((p) => p.userId === conversation.createdBy);
 
+    if (!createdByUser) {
+      throw new NotFoundException({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Conversation owner not found',
+          retryable: false,
+          traceId: crypto.randomUUID(),
+        },
+      });
+    }
+
     return {
-      data: {
-        id: conversation.id,
-        type: conversation.type,
-        title: conversation.title,
-        avatarUrl: conversation.avatarUrl,
-        createdAt: conversation.createdAt.toISOString(),
-        updatedAt: conversation.updatedAt.toISOString(),
-        createdBy: createdByUser
-          ? {
-              id: createdByUser.userId,
-              username: createdByUser.username,
-              displayName: createdByUser.displayName,
-              avatarUrl: createdByUser.avatarUrl,
-              lastSeenAt: createdByUser.lastSeenAt?.toISOString() ?? null,
-            }
-          : null,
-        participants: participants.map((p) => ({
-          user: {
-            id: p.userId,
-            username: p.username,
-            displayName: p.displayName,
-            avatarUrl: p.avatarUrl,
-            lastSeenAt: p.lastSeenAt?.toISOString() ?? null,
-          },
-          role: p.role,
-          joinedAt: p.joinedAt.toISOString(),
-        })),
+      id: conversation.id,
+      type: conversation.type,
+      title: conversation.title,
+      avatarUrl: conversation.avatarUrl,
+      createdAt: conversation.createdAt.toISOString(),
+      updatedAt: conversation.updatedAt.toISOString(),
+      createdBy: {
+        id: createdByUser.userId,
+        username: createdByUser.username,
+        displayName: createdByUser.displayName,
+        avatarUrl: createdByUser.avatarUrl,
+        lastSeenAt: createdByUser.lastSeenAt?.toISOString() ?? null,
       },
+      participants: participants.map((p) => ({
+        user: {
+          id: p.userId,
+          username: p.username,
+          displayName: p.displayName,
+          avatarUrl: p.avatarUrl,
+          lastSeenAt: p.lastSeenAt?.toISOString() ?? null,
+        },
+        role: p.role,
+        joinedAt: p.joinedAt.toISOString(),
+      })),
     };
   }
 
@@ -187,11 +178,7 @@ export class ConversationsService {
 
     await this.repository.softDelete(conversationId);
 
-    return {
-      data: {
-        message: 'Conversation deleted successfully',
-      },
-    };
+    return { message: 'Conversation deleted successfully' };
   }
 
   async join(conversationId: string, userId: string) {
@@ -210,20 +197,12 @@ export class ConversationsService {
 
     const isParticipant = await this.repository.isUserParticipant(conversationId, userId);
     if (isParticipant) {
-      return {
-        data: {
-          message: 'Already a participant',
-        },
-      };
+      return { message: 'Already a participant' };
     }
 
     await this.repository.joinConversation(conversationId, userId);
 
-    return {
-      data: {
-        message: 'Joined conversation successfully',
-      },
-    };
+    return { message: 'Joined conversation successfully' };
   }
 
   async leave(conversationId: string, userId: string) {
@@ -266,10 +245,6 @@ export class ConversationsService {
 
     await this.repository.leaveConversation(conversationId, userId);
 
-    return {
-      data: {
-        message: 'Left conversation successfully',
-      },
-    };
+    return { message: 'Left conversation successfully' };
   }
 }

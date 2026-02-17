@@ -52,6 +52,12 @@ export const conversationListItemSchema = conversationSchema.extend({
   unreadCount: z.number(),
 });
 
+export const conversationsListResponseSchema = z.object({
+  conversations: z.array(conversationListItemSchema),
+  nextCursor: z.string().nullable(),
+  hasMore: z.boolean(),
+});
+
 // Detail - for GET /conversations/:id response
 export const conversationDetailSchema = conversationSchema.extend({
   createdBy: userPublicSchema,
@@ -71,5 +77,6 @@ export const conversationCreatedSchema = conversationSchema.extend({
 });
 
 export type ConversationListItem = z.infer<typeof conversationListItemSchema>;
+export type ConversationsListResponse = z.infer<typeof conversationsListResponseSchema>;
 export type ConversationDetail = z.infer<typeof conversationDetailSchema>;
 export type ConversationCreated = z.infer<typeof conversationCreatedSchema>;

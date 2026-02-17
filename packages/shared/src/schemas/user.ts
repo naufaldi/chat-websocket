@@ -19,5 +19,18 @@ export const userPublicSchema = userSchema.omit({
   updatedAt: true,
 });
 
+export const userSearchResultSchema = userPublicSchema.pick({
+  id: true,
+  username: true,
+  displayName: true,
+  avatarUrl: true,
+});
+
+export const userSearchResponseSchema = z.object({
+  users: z.array(userSearchResultSchema),
+});
+
 export type User = z.infer<typeof userSchema>;
 export type UserPublic = z.infer<typeof userPublicSchema>;
+export type UserSearchResult = z.infer<typeof userSearchResultSchema>;
+export type UserSearchResponse = z.infer<typeof userSearchResponseSchema>;

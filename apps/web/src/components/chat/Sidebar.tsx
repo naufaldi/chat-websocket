@@ -1,5 +1,5 @@
 import { Search } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ConversationItem } from './ConversationItem';
 import type { ConversationListItem } from '@/types/conversation';
 
@@ -10,15 +10,49 @@ interface SidebarProps {
   onCreateChat: () => void;
   onLeave?: (id: string) => void;
   onDelete?: (id: string) => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  onFetchNextPage?: () => void;
 }
 
-export function Sidebar({ conversations, selectedId, onSelect, onCreateChat, onLeave, onDelete }: SidebarProps) {
+export function Sidebar({
+  conversations,
+  selectedId,
+  onSelect,
+  onCreateChat,
+  onLeave,
+  onDelete,
+  hasNextPage = false,
+  isFetchingNextPage = false,
+  onFetchNextPage,
+}: SidebarProps) {
   const [search, setSearch] = useState('');
+  const listRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const filtered = conversations.filter((c) => {
     const name = c.title || 'Direct Chat';
     return name.toLowerCase().includes(search.toLowerCase());
   });
+
+  useEffect(() => {
+    if (!hasNextPage || !onFetchNextPage || !sentinelRef.current || !listRef.current) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry?.isIntersecting && !isFetchingNextPage) {
+          onFetchNextPage();
+        }
+      },
+      { root: listRef.current, threshold: 0.2 }
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, onFetchNextPage]);
 
   return (
     <div className="flex flex-col h-full">
@@ -37,7 +71,7 @@ export function Sidebar({ conversations, selectedId, onSelect, onCreateChat, onL
       </div>
 
       {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={listRef} className="flex-1 overflow-y-auto">
         {filtered.map((conversation) => (
           <ConversationItem
             key={conversation.id}
@@ -50,6 +84,11 @@ export function Sidebar({ conversations, selectedId, onSelect, onCreateChat, onL
         ))}
         {filtered.length === 0 && (
           <div className="p-4 text-center text-gray-500">No conversations found</div>
+        )}
+        {hasNextPage && (
+          <div ref={sentinelRef} className="p-3 text-center text-xs text-gray-400">
+            {isFetchingNextPage ? 'Loading more...' : 'Load more'}
+          </div>
         )}
       </div>
 

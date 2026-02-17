@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { X, Search, Check } from 'lucide-react';
 import type { CreateConversationInput } from '@chat/shared/schemas/conversation';
 
@@ -6,21 +6,37 @@ interface CreateChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (data: CreateConversationInput) => void;
-  // In real app, fetch contacts from API
-  contacts?: Array<{ id: string; displayName: string }>;
+  contacts?: Array<{ id: string; displayName: string; username: string; avatarUrl: string | null }>;
+  isSearching?: boolean;
+  onSearchQueryChange?: (query: string) => void;
 }
 
-export function CreateChatModal({ isOpen, onClose, onCreate, contacts = [] }: CreateChatModalProps) {
+export function CreateChatModal({
+  isOpen,
+  onClose,
+  onCreate,
+  contacts = [],
+  isSearching = false,
+  onSearchQueryChange,
+}: CreateChatModalProps) {
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isGroup, setIsGroup] = useState(false);
   const [title, setTitle] = useState('');
 
+  useEffect(() => {
+    if (!isOpen) {
+      setSearch('');
+      setSelectedIds([]);
+      setIsGroup(false);
+      setTitle('');
+      onSearchQueryChange?.('');
+    }
+  }, [isOpen, onSearchQueryChange]);
+
   if (!isOpen) return null;
 
-  const filteredContacts = contacts.filter((c) =>
-    c.displayName.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredContacts = contacts;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -61,7 +77,11 @@ export function CreateChatModal({ isOpen, onClose, onCreate, contacts = [] }: Cr
                 type="text"
                 placeholder="Search contacts..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSearch(value);
+                  onSearchQueryChange?.(value);
+                }}
                 className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-full text-sm focus:outline-none"
               />
             </div>
@@ -95,6 +115,12 @@ export function CreateChatModal({ isOpen, onClose, onCreate, contacts = [] }: Cr
 
           {/* Contact list */}
           <div className="max-h-64 overflow-y-auto">
+            {isSearching && (
+              <div className="px-4 py-3 text-sm text-gray-500">Searching users...</div>
+            )}
+            {!isSearching && search.trim().length > 0 && search.trim().length < 3 && (
+              <div className="px-4 py-3 text-sm text-gray-500">Type at least 3 characters to search users</div>
+            )}
             {filteredContacts.map((contact) => (
               <button
                 key={contact.id}
@@ -103,10 +129,16 @@ export function CreateChatModal({ isOpen, onClose, onCreate, contacts = [] }: Cr
                 className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50"
               >
                 <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">👤</div>
-                <span className="flex-1 text-left">{contact.displayName}</span>
+                <div className="flex-1 text-left">
+                  <p>{contact.displayName}</p>
+                  <p className="text-xs text-gray-500">@{contact.username}</p>
+                </div>
                 {selectedIds.includes(contact.id) && <Check className="w-5 h-5 text-blue-500" />}
               </button>
             ))}
+            {!isSearching && search.trim().length >= 3 && filteredContacts.length === 0 && (
+              <div className="px-4 py-3 text-sm text-gray-500">No users found</div>
+            )}
           </div>
 
           {/* Footer */}

@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq, ilike, ne, or } from 'drizzle-orm';
 import { DRIZZLE } from '../database/database.service';
 import type { DrizzleDB } from '../database/database.types';
 import { users } from '@chat/db';
@@ -17,6 +17,13 @@ interface User {
   lastSeenAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+interface UserSearchRow {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
 }
 
 @Injectable()
@@ -68,5 +75,27 @@ export class UsersRepository {
       .update(users)
       .set({ lastSeenAt: new Date() })
       .where(eq(users.id, id));
+  }
+
+  async searchPublicUsers(query: string, excludeUserId: string, limit: number): Promise<UserSearchRow[]> {
+    return this.db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
+      })
+      .from(users)
+      .where(
+        and(
+          ne(users.id, excludeUserId),
+          eq(users.isActive, true),
+          or(
+            ilike(users.username, `%${query}%`),
+            ilike(users.displayName, `%${query}%`)
+          )
+        )
+      )
+      .limit(limit);
   }
 }

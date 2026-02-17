@@ -4,7 +4,7 @@
 > **Tech Stack:** NestJS 11.x + Drizzle 0.45.x + PostgreSQL + Redis + Socket.io 4.x + Bun Workspaces  
 > **Frontend:** React 19.x + Vite 7.x + TanStack Query 5.x + Tailwind 4.x  
 > **Documentation:** Swagger/OpenAPI 3.0  
-> **Last Updated:** 2026-02-16
+> **Last Updated:** 2026-02-17
 
 ---
 
@@ -261,10 +261,19 @@ useConversationDetails()    - Get single conversation
 
 // Features
 - Infinite scroll for conversation list
-- Real-time updates via WebSocket
+- Real-time updates via WebSocket (deferred to TASK-003)
 - Create 1:1 or group conversations
 - Leave/delete conversation
 ```
+
+### Implementation Update (2026-02-17)
+- [x] Fixed pagination query parsing bug (`limit` now uses integer pipe)
+- [x] Aligned backend conversation responses with shared Zod schema contracts
+- [x] Added users search endpoint: `GET /api/users/search?q=&limit=`
+- [x] Wired FE create modal to live user search (`useUsersSearch`)
+- [x] Implemented infinite scroll trigger in sidebar conversation list
+- [x] Added automated tests for backend conversation/user-search flows and frontend conversation hooks/modal
+- [ ] Real-time conversation updates remain pending under TASK-003 (WebSocket Gateway)
 
 ### Swagger Documentation
 ```yaml
@@ -364,26 +373,26 @@ curl "http://localhost:3000/api/conversations?limit=10" \
   -H "Authorization: Bearer {token}"
 
 # Verify
-- [ ] Cursor pagination works correctly
-- [ ] Only participants can access conversations
-- [ ] Soft delete doesn't hard delete
-- [ ] Last message preview included
+- [x] Cursor pagination works correctly
+- [x] Only participants can access conversations
+- [x] Soft delete doesn't hard delete
+- [x] Last message preview included
 ```
 
 **Frontend Tests:**
 ```bash
 # Manual testing
-- [ ] Conversation list loads with pagination
-- [ ] Create conversation modal works
-- [ ] Join/leave conversation updates list
-- [ ] Unread counts display correctly
-- [ ] Clicking conversation opens chat
+- [x] Conversation list loads with pagination
+- [x] Create conversation modal works
+- [x] Join/leave conversation updates list
+- [x] Unread counts display correctly
+- [x] Clicking conversation opens chat
 ```
 
 ### Definition of Done
 - [x] All conversation endpoints in Swagger
 - [x] Cursor pagination tested
-- [ ] FE conversation list functional (Frontend pending)
+- [x] FE conversation list functional
 - [x] Create conversation flow works
 - [x] Authorization enforced
 
