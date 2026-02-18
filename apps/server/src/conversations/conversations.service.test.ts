@@ -4,6 +4,7 @@ import {
   conversationCreatedSchema,
   conversationDetailSchema,
   conversationsListResponseSchema,
+  messagesListResponseSchema,
 } from '@chat/shared';
 import { ConversationsService } from './conversations.service';
 
@@ -26,13 +27,21 @@ function createRepositoryMock() {
   };
 }
 
+function createMessagesRepositoryMock() {
+  return {
+    findByConversation: vi.fn(),
+  };
+}
+
 describe('ConversationsService', () => {
   let repository: ReturnType<typeof createRepositoryMock>;
+  let messagesRepository: ReturnType<typeof createMessagesRepositoryMock>;
   let service: ConversationsService;
 
   beforeEach(() => {
     repository = createRepositoryMock();
-    service = new ConversationsService(repository as never);
+    messagesRepository = createMessagesRepositoryMock();
+    service = new ConversationsService(repository as never, messagesRepository as never);
   });
 
   it('returns flat paginated list response matching shared schema', async () => {
@@ -203,5 +212,53 @@ describe('ConversationsService', () => {
     expect(result.conversations).toEqual([]);
     expect(result.hasMore).toBe(false);
     expect(result.nextCursor).toBeNull();
+  });
+
+  it('returns schema-valid message history for conversation participants', async () => {
+    repository.findById.mockResolvedValue({
+      id: CONVERSATION_ID,
+      type: 'direct',
+      title: null,
+      avatarUrl: null,
+      createdBy: USER_ID,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      deletedAt: null,
+    });
+    repository.isUserParticipant.mockResolvedValue(true);
+    messagesRepository.findByConversation.mockResolvedValue([
+      {
+        id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1',
+        conversationId: CONVERSATION_ID,
+        senderId: USER_ID,
+        content: 'newer message',
+        contentType: 'text',
+        clientMessageId: null,
+        status: 'delivered',
+        replyToId: null,
+        createdAt: new Date('2026-01-01T00:02:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:02:00.000Z'),
+        deletedAt: null,
+      },
+      {
+        id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2',
+        conversationId: CONVERSATION_ID,
+        senderId: OTHER_USER_ID,
+        content: 'older message',
+        contentType: 'text',
+        clientMessageId: null,
+        status: 'delivered',
+        replyToId: null,
+        createdAt: new Date('2026-01-01T00:01:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:01:00.000Z'),
+        deletedAt: null,
+      },
+    ]);
+
+    const result = await service.listMessages(CONVERSATION_ID, USER_ID, 50);
+
+    expect(messagesListResponseSchema.parse(result)).toEqual(result);
+    expect(result.messages[0]?.content).toBe('older message');
+    expect(result.messages[1]?.content).toBe('newer message');
   });
 });

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Message } from '@chat/shared/schemas/message';
 import { chatSocketService, type ChatSocketService } from '@/lib/socket';
+import { conversationsApi } from '@/lib/api';
 
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
 
@@ -36,6 +37,49 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
     setMessages([]);
     setTypingUserIds([]);
   }, [conversationId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!enabled || !conversationId) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const loadMessages = async () => {
+      try {
+        const result = await conversationsApi.listMessages(conversationId);
+        if (cancelled) {
+          return;
+        }
+
+        setMessages((prev) => {
+          if (prev.length === 0) {
+            return result.messages;
+          }
+
+          const messageMap = new Map<string, Message>();
+          result.messages.forEach((message) => {
+            messageMap.set(message.id, message);
+          });
+          prev.forEach((message) => {
+            messageMap.set(message.id, message);
+          });
+
+          return Array.from(messageMap.values()).sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+        });
+      } catch {}
+    };
+
+    void loadMessages();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, enabled]);
 
   useEffect(() => {
     if (!enabled || !conversationId) {

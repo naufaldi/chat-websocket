@@ -11,6 +11,7 @@ import type {
   CreateConversationInput,
 } from '@chat/shared/schemas/conversation';
 import { userSearchResponseSchema } from '@chat/shared/schemas/user';
+import { messagesListResponseSchema } from '@chat/shared/schemas/message';
 import type { ConversationsQueryResponse } from '@/types/conversation';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -142,6 +143,13 @@ export const conversationsApi = {
 
   leave: async (id: string): Promise<void> => {
     await api.delete(`/conversations/${id}/leave`);
+  },
+
+  listMessages: async (id: string, limit = 50) => {
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    const response = await api.get(`/conversations/${id}/messages`, { params });
+    return messagesListResponseSchema.parse(response.data);
   },
 };
 

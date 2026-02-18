@@ -22,7 +22,7 @@ async function bootstrap(): Promise<void> {
 
   const redisUrl = process.env.REDIS_URL;
   if (redisUrl) {
-    const redisAdapter = new RedisIoAdapter(app);
+    const redisAdapter = new RedisIoAdapter(app.getHttpServer());
     try {
       await redisAdapter.connectToRedis(redisUrl);
       app.useWebSocketAdapter(redisAdapter);
@@ -40,14 +40,14 @@ async function bootstrap(): Promise<void> {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
+  SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT || 3000;
 
   try {
     await app.listen(port);
     console.log(`Server running on port ${port}`);
-    console.log(`Swagger UI available at http://localhost:${port}/docs`);
+    console.log(`Swagger UI available at http://localhost:${port}/api/docs`);
   } catch (error: any) {
     if (error.code === 'EADDRINUSE') {
       console.error(`Port ${port} is already in use. Please stop the existing server or use a different port.`);

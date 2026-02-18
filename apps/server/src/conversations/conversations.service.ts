@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ConversationsRepository } from './conversations.repository';
+import { MessagesRepository } from '../messages/messages.repository';
 import type { CreateConversationInput } from '@chat/shared';
 
 @Injectable()
 export class ConversationsService {
-  constructor(private readonly repository: ConversationsRepository) {}
+  constructor(
+    private readonly repository: ConversationsRepository,
+    private readonly messagesRepository: MessagesRepository,
+  ) {}
 
   async findAllByUser(
     userId: string,
@@ -81,6 +85,54 @@ export class ConversationsService {
         },
         role: p.role,
       })),
+    };
+  }
+
+  async listMessages(conversationId: string, userId: string, limit: number) {
+    const conversation = await this.repository.findById(conversationId);
+
+    if (!conversation) {
+      throw new NotFoundException({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Conversation not found',
+          retryable: false,
+          traceId: crypto.randomUUID(),
+        },
+      });
+    }
+
+    const isParticipant = await this.repository.isUserParticipant(conversationId, userId);
+    if (!isParticipant) {
+      throw new ForbiddenException({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'You are not a participant of this conversation',
+          retryable: false,
+          traceId: crypto.randomUUID(),
+        },
+      });
+    }
+
+    const messages = await this.messagesRepository.findByConversation(conversationId, limit);
+
+    return {
+      messages: messages
+        .slice()
+        .reverse()
+        .map((message) => ({
+          id: message.id,
+          conversationId: message.conversationId,
+          senderId: message.senderId,
+          content: message.content,
+          contentType: message.contentType,
+          clientMessageId: message.clientMessageId,
+          status: message.status,
+          replyToId: message.replyToId,
+          createdAt: message.createdAt.toISOString(),
+          updatedAt: message.updatedAt.toISOString(),
+          deletedAt: message.deletedAt?.toISOString() ?? null,
+        })),
     };
   }
 

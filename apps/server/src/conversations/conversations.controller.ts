@@ -74,6 +74,22 @@ export class ConversationsController {
     return this.conversationsService.findById(id, req.user.userId);
   }
 
+  @Get(':id/messages')
+  @ApiOperation({ summary: 'List messages in a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Page size (default: 50, max: 100)' })
+  @ApiResponse({ status: 200, description: 'Conversation messages' })
+  @ApiResponse({ status: 403, description: 'Not a participant' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  async listMessages(
+    @Request() req: { user: { userId: string } },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
+  ) {
+    const safeLimit = Math.min(Math.max(1, limit || 50), 100);
+    return this.conversationsService.listMessages(id, req.user.userId, safeLimit);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a conversation (owner only)' })
   @ApiParam({ name: 'id', description: 'Conversation UUID' })

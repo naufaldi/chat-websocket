@@ -27,7 +27,12 @@ export const sendMessageSchema = z.object({
   replyToId: z.string().uuid().optional(),
 });
 
+export const messagesListResponseSchema = z.object({
+  messages: z.array(messageSchema),
+});
+
 export type Message = z.infer<typeof messageSchema>;
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 export type MessageStatus = z.infer<typeof messageStatusSchema>;
 export type ContentType = z.infer<typeof contentTypeSchema>;
+export type MessagesListResponse = z.infer<typeof messagesListResponseSchema>;

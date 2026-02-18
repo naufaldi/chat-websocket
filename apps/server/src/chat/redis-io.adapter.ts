@@ -1,7 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
-import type { INestApplicationContext } from '@nestjs/common';
 import type { ServerOptions } from 'socket.io';
 import { createClient } from 'redis';
 
@@ -12,8 +11,8 @@ export class RedisIoAdapter extends IoAdapter {
   private pubClient?: RedisClient;
   private subClient?: RedisClient;
 
-  constructor(app: INestApplicationContext) {
-    super(app);
+  constructor(httpServer?: object) {
+    super(httpServer);
   }
 
   async connectToRedis(redisUrl: string): Promise<void> {
@@ -28,6 +27,9 @@ export class RedisIoAdapter extends IoAdapter {
   }
 
   createIOServer(port: number, options?: ServerOptions) {
+    if (port === 0 && (!this.httpServer || typeof (this.httpServer as { listeners?: unknown }).listeners !== 'function')) {
+      throw new Error('RedisIoAdapter requires a valid Node HTTP server with listeners() support');
+    }
     const server = super.createIOServer(port, options);
     if (this.pubClient && this.subClient) {
       server.adapter(createAdapter(this.pubClient, this.subClient));
