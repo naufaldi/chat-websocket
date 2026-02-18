@@ -6,8 +6,7 @@ type EventHandler = (payload?: unknown) => void;
 
 function createMockSocket() {
   const handlers = new Map<string, Set<EventHandler>>();
-
-  return {
+  const socket = {
     connected: false,
     connect: vi.fn(),
     disconnect: vi.fn(),
@@ -26,9 +25,12 @@ function createMockSocket() {
       handlers.get(event)?.delete(handler);
     }),
     trigger(event: string, payload?: unknown) {
+      if (event === 'connect') socket.connected = true;
+      if (event === 'disconnect') socket.connected = false;
       handlers.get(event)?.forEach((handler) => handler(payload));
     },
   };
+  return socket;
 }
 
 describe('ChatSocketService', () => {
@@ -145,5 +147,76 @@ describe('ChatSocketService', () => {
     socket.trigger('message:error', backendPayload);
 
     expect(onMessageError).toHaveBeenCalledWith(backendPayload);
+  });
+
+  describe('presence:heartbeat', () => {
+    it('emits presence:heartbeat every 15s while connected', () => {
+      vi.useFakeTimers();
+      const socket = createMockSocket();
+      const service = createChatSocketService({
+        createSocket: () => socket,
+        getToken: () => 'token',
+      });
+
+      service.connect();
+      socket.trigger('connect');
+
+      expect(socket.emit).not.toHaveBeenCalledWith('presence:heartbeat', expect.anything());
+
+      vi.advanceTimersByTime(15_000);
+      expect(socket.emit).toHaveBeenCalledTimes(1);
+      expect(socket.emit).toHaveBeenCalledWith('presence:heartbeat', { status: 'online' });
+
+      vi.advanceTimersByTime(15_000);
+      expect(socket.emit).toHaveBeenCalledTimes(2);
+      expect(socket.emit).toHaveBeenNthCalledWith(2, 'presence:heartbeat', { status: 'online' });
+
+      vi.advanceTimersByTime(15_000);
+      expect(socket.emit).toHaveBeenCalledTimes(3);
+
+      vi.useRealTimers();
+    });
+
+    it('stops heartbeat on disconnect', () => {
+      vi.useFakeTimers();
+      const socket = createMockSocket();
+      const service = createChatSocketService({
+        createSocket: () => socket,
+        getToken: () => 'token',
+      });
+
+      service.connect();
+      socket.trigger('connect');
+
+      vi.advanceTimersByTime(15_000);
+      expect(socket.emit).toHaveBeenCalledWith('presence:heartbeat', { status: 'online' });
+
+      service.disconnect();
+      const emitCountAfterDisconnect = socket.emit.mock.calls.length;
+
+      vi.advanceTimersByTime(30_000);
+      expect(socket.emit.mock.calls.length).toBe(emitCountAfterDisconnect);
+    });
+
+    it('does not create duplicate intervals on reconnect', () => {
+      vi.useFakeTimers();
+      const socket = createMockSocket();
+      const service = createChatSocketService({
+        createSocket: () => socket,
+        getToken: () => 'token',
+      });
+
+      service.connect();
+      socket.trigger('connect');
+
+      vi.advanceTimersByTime(15_000);
+      expect(socket.emit).toHaveBeenCalledTimes(1);
+
+      socket.trigger('disconnect');
+      socket.trigger('connect');
+
+      vi.advanceTimersByTime(15_000);
+      expect(socket.emit).toHaveBeenCalledTimes(2);
+    });
   });
 });

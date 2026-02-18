@@ -9,6 +9,8 @@ import {
 } from '@chat/shared/schemas/socket';
 import { io, type Socket } from 'socket.io-client';
 
+const HEARTBEAT_INTERVAL_MS = 15_000;
+
 type ClientEventName = keyof typeof clientToServerEventSchemas;
 type ServerEventName = keyof typeof serverToClientEventSchemas;
 
@@ -69,6 +71,7 @@ export class ChatSocketService {
   private status: SocketConnectionStatus = 'disconnected';
   private statusListeners = new Set<(status: SocketConnectionStatus) => void>();
   private serverListeners = new Map<ServerEventName, Set<EventHandler>>();
+  private heartbeatIntervalId: ReturnType<typeof setInterval> | null = null;
 
   constructor(options: CreateChatSocketServiceOptions = {}) {
     this.createSocket = options.createSocket ?? createDefaultSocket;
@@ -114,6 +117,7 @@ export class ChatSocketService {
       return;
     }
 
+    this.stopHeartbeat();
     this.socket.disconnect();
     this.socket = null;
     this.setStatus('disconnected');
@@ -145,6 +149,10 @@ export class ChatSocketService {
 
   typingStop(conversationId: string): void {
     this.emitValidated('typing:stop', { conversationId });
+  }
+
+  emitHeartbeat(status: 'online' | 'away' = 'online'): void {
+    this.emitValidated('presence:heartbeat', { status });
   }
 
   on<E extends ServerEventName>(
@@ -191,10 +199,31 @@ export class ChatSocketService {
   }
 
   private attachLifecycleHandlers(socket: SocketLike): void {
-    socket.on('connect', () => this.setStatus('connected'));
-    socket.on('disconnect', () => this.setStatus('disconnected'));
+    socket.on('connect', () => {
+      this.setStatus('connected');
+      this.startHeartbeat();
+    });
+    socket.on('disconnect', () => {
+      this.stopHeartbeat();
+      this.setStatus('disconnected');
+    });
     socket.on('connect_error', () => this.setStatus('reconnecting'));
     socket.on('reconnect_attempt', () => this.setStatus('reconnecting'));
+  }
+
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    this.heartbeatIntervalId = setInterval(() => {
+      if (!this.socket?.connected) return;
+      this.emitHeartbeat('online');
+    }, HEARTBEAT_INTERVAL_MS);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatIntervalId !== null) {
+      clearInterval(this.heartbeatIntervalId);
+      this.heartbeatIntervalId = null;
+    }
   }
 
   private attachServerListeners(socket: SocketLike): void {

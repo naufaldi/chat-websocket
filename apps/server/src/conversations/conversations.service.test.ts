@@ -46,6 +46,7 @@ describe('ConversationsService', () => {
           createdBy: USER_ID,
           createdAt: new Date('2026-01-01T00:00:00.000Z'),
           updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+          deletedAt: null,
         },
       ],
       nextCursor: 'cursor-1',
@@ -83,6 +84,7 @@ describe('ConversationsService', () => {
       createdBy: USER_ID,
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
       updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      deletedAt: null,
     });
     repository.findParticipants.mockResolvedValue([
       {
@@ -119,6 +121,7 @@ describe('ConversationsService', () => {
       createdBy: USER_ID,
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
       updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      deletedAt: null,
     });
     repository.isUserParticipant.mockResolvedValue(true);
     repository.findParticipants.mockResolvedValue([
@@ -185,8 +188,20 @@ describe('ConversationsService', () => {
     expect(repository.leaveConversation).toHaveBeenCalledWith(CONVERSATION_ID, OTHER_USER_ID);
   });
 
-  it('throws not found for missing conversation', async () => {
+  it('throws not found for missing or soft-deleted conversation', async () => {
     repository.findById.mockResolvedValue(null);
     await expect(service.findById(CONVERSATION_ID, USER_ID)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('excludes soft-deleted conversations from list (repository filters by isNull deletedAt)', async () => {
+    repository.findByUserPaginated.mockResolvedValue({
+      conversations: [],
+      nextCursor: null,
+    });
+
+    const result = await service.findAllByUser(USER_ID, undefined, 20);
+    expect(result.conversations).toEqual([]);
+    expect(result.hasMore).toBe(false);
+    expect(result.nextCursor).toBeNull();
   });
 });

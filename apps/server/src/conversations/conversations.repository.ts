@@ -18,6 +18,7 @@ interface Conversation {
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
+  deletedAt: Date | null;
 }
 
 interface ParticipantRow {
@@ -32,7 +33,7 @@ export class ConversationsRepository {
     const [conversation] = await this.db
       .select()
       .from(conversations)
-      .where(eq(conversations.id, id))
+      .where(and(eq(conversations.id, id), isNull(conversations.deletedAt)))
       .limit(1);
     return conversation || null;
   }
@@ -50,7 +51,7 @@ export class ConversationsRepository {
     return this.db
       .select()
       .from(conversations)
-      .where(inArray(conversations.id, conversationIds))
+      .where(and(inArray(conversations.id, conversationIds), isNull(conversations.deletedAt)))
       .orderBy(desc(conversations.updatedAt))
       .limit(limit);
   }
@@ -106,15 +107,18 @@ export class ConversationsRepository {
       return { conversations: [], nextCursor: null };
     }
 
-    // Build query with cursor
+    const baseWhere = and(
+      inArray(conversations.id, conversationIds),
+      isNull(conversations.deletedAt)
+    );
+
     let query = this.db
       .select()
       .from(conversations)
-      .where(inArray(conversations.id, conversationIds))
+      .where(baseWhere)
       .orderBy(desc(conversations.updatedAt), desc(conversations.id))
       .limit(limit + 1);
 
-    // Apply cursor filter
     if (cursor) {
       try {
         const decoded: CursorData = JSON.parse(Buffer.from(cursor, 'base64url').toString());
@@ -123,7 +127,7 @@ export class ConversationsRepository {
 
         query = query.where(
           and(
-            inArray(conversations.id, conversationIds),
+            baseWhere,
             or(
               lt(conversations.updatedAt, cursorDate),
               and(

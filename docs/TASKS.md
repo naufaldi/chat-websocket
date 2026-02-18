@@ -15,13 +15,13 @@
 | 0 | Foundation | ✅ Complete | 3 | - |
 | 1 | Authentication System | ✅ Complete | 4 | ✅ |
 | 2 | Conversations API | 🟡 In Progress | 3 | ✅ |
-| 3 | WebSocket Gateway | ⏳ Pending | 4 | - |
+| 3 | WebSocket Gateway | 🟡 In Progress | 4 | - |
 | 4 | Message System | ⏳ Pending | 5 | ✅ |
 | 5 | Read Receipts | ⏳ Pending | 4 | ✅ |
 | 6 | Presence System | ⏳ Pending | 3 | ✅ |
 | 7 | Deployment & Observability | ⏳ Pending | 3 | ✅ |
 
-**Total:** 29 days (~6 weeks) | **Completed:** 2/8 tasks | **In Progress:** 1/8 tasks
+**Total:** 29 days (~6 weeks) | **Completed:** 2/8 tasks | **In Progress:** 2/8 tasks
 
 > *Note: Auth system is now 100% complete. Rate limiting implemented (5 attempts/15min).
 
@@ -214,9 +214,9 @@ curl -X POST http://localhost:3000/api/auth/register \
 
 ---
 
-## ✅ TASK-002: Conversations API
+## 🟡 TASK-002: Conversations API
 
-**Status:** ✅ **COMPLETE**
+**Status:** 🟡 **IN PROGRESS**
 **Priority:** 🔴 Critical | **Est:** 3 days | **Dependencies:** TASK-001
 
 ### Overview
@@ -381,16 +381,17 @@ curl "http://localhost:3000/api/conversations?limit=10" \
 
 ### Definition of Done
 - [x] All conversation endpoints in Swagger
-- [ ] Cursor pagination tested
-- [ ] FE conversation list functional (response envelope mismatch + infinite scroll pending)
-- [ ] Create conversation flow functional end-to-end (contact selection wiring pending)
+- [ ] Cursor pagination tested (manual verification pending)
+- [ ] FE conversation list functional (manual end-to-end verification pending)
+- [ ] Create conversation flow functional end-to-end (manual verification pending)
 - [x] Authorization enforced
+- [x] Soft-deleted conversations excluded from list/detail queries
 
 ---
 
-## ⏳ TASK-003: WebSocket Gateway
+## 🟡 TASK-003: WebSocket Gateway
 
-**Status:** ⏳ **PENDING**  
+**Status:** 🟡 **IN PROGRESS**  
 **Priority:** 🔴 Critical | **Est:** 4 days | **Dependencies:** TASK-002
 
 ### Overview
@@ -474,7 +475,7 @@ class ChatSocketService {
 ```
 
 ### Protocol Documentation
-Create `docs/websocket-protocol.md`:
+See `docs/rfc-websocket-protocol.md`:
 ```markdown
 # WebSocket Protocol Specification
 
@@ -537,12 +538,13 @@ wscat -c "ws://localhost:3000/chat?token={valid_jwt}"
 ```
 
 ### Definition of Done
-- [ ] WebSocket server running on `/chat`
-- [ ] JWT authentication working
-- [ ] All events handled correctly
-- [ ] Protocol documentation complete
-- [ ] FE socket service implemented
+- [x] WebSocket server running on `/chat`
+- [x] JWT authentication working
+- [x] All events handled correctly
+- [ ] Protocol documentation synchronized with implementation
+- [x] FE socket service implemented
 - [ ] Reconnection handling tested
+- [x] Client emits `presence:heartbeat` every 15s
 
 ---
 

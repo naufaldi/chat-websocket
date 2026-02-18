@@ -28,6 +28,7 @@ export class ConversationsService {
           ...conv,
           createdAt: conv.createdAt.toISOString(),
           updatedAt: conv.updatedAt.toISOString(),
+          deletedAt: conv.deletedAt?.toISOString() ?? null,
           participants: participants.map((p) => ({
             user: {
               id: p.userId,
@@ -71,6 +72,7 @@ export class ConversationsService {
       createdBy: conversation.createdBy,
       createdAt: conversation.createdAt.toISOString(),
       updatedAt: conversation.updatedAt.toISOString(),
+      deletedAt: conversation.deletedAt?.toISOString() ?? null,
       participants: participants.map((p) => ({
         user: {
           id: p.userId,
@@ -129,6 +131,7 @@ export class ConversationsService {
       avatarUrl: conversation.avatarUrl,
       createdAt: conversation.createdAt.toISOString(),
       updatedAt: conversation.updatedAt.toISOString(),
+      deletedAt: conversation.deletedAt?.toISOString() ?? null,
       createdBy: {
         id: createdByUser.userId,
         username: createdByUser.username,
