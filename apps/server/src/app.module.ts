@@ -7,6 +7,9 @@ import { HealthModule } from './health/health.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { UsersModule } from './users/users.module';
 import { ChatModule } from './chat/chat.module';
+import { MessagesModule } from './messages/messages.module';
+import { ReadReceiptsModule } from './read-receipts/read-receipts.module';
+import { PresenceModule } from './presence/presence.module';
 
 @Module({
   imports: [
@@ -24,6 +27,9 @@ import { ChatModule } from './chat/chat.module';
     ConversationsModule,
     UsersModule,
     ChatModule,
+    MessagesModule,
+    ReadReceiptsModule,
+    PresenceModule,
   ],
 })
 export class AppModule {}

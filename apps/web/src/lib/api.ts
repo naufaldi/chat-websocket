@@ -11,7 +11,7 @@ import type {
   CreateConversationInput,
 } from '@chat/shared/schemas/conversation';
 import { userSearchResponseSchema } from '@chat/shared/schemas/user';
-import { messagesListResponseSchema } from '@chat/shared/schemas/message';
+import { messagesListResponseSchema, messageSchema } from '@chat/shared/schemas/message';
 import type { ConversationsQueryResponse } from '@/types/conversation';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -51,7 +51,7 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // Skip if already retried or if this is an auth endpoint (login/register/refresh)
-    if (originalRequest._retry || isAuthEndpoint(originalRequest.url)) {
+    if (!originalRequest || originalRequest._retry || isAuthEndpoint(originalRequest.url)) {
       return Promise.reject(error);
     }
 
@@ -65,10 +65,15 @@ api.interceptors.response.use(
         const refreshToken = localStorage.getItem('refreshToken');
 
         if (!refreshToken) {
-          // No refresh token - clear tokens and reject
+          // No refresh token - clear tokens, redirect to login, and reject
           refreshAttempts = 0;
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
+          
+          // Redirect to login if not already there
+          if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+            window.location.href = '/login?unauthorized=true';
+          }
           return Promise.reject(error);
         }
 
@@ -89,17 +94,27 @@ api.interceptors.response.use(
 
           return api(originalRequest);
         } catch (refreshError) {
-          // Refresh failed - clear tokens but DON'T redirect
+          // Refresh failed - clear tokens and redirect to login
           refreshAttempts = 0;
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
+          
+          // Redirect to login if not already there
+          if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+            window.location.href = '/login?unauthorized=true';
+          }
           return Promise.reject(refreshError);
         }
       } else {
-        // Max refresh attempts reached - clear tokens
+        // Max refresh attempts reached - clear tokens and redirect
         refreshAttempts = 0;
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        
+        // Redirect to login if not already there
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+          window.location.href = '/login?unauthorized=true';
+        }
         return Promise.reject(error);
       }
     }
@@ -150,6 +165,20 @@ export const conversationsApi = {
     params.set('limit', String(limit));
     const response = await api.get(`/conversations/${id}/messages`, { params });
     return messagesListResponseSchema.parse(response.data);
+  },
+
+  sendMessage: async (conversationId: string, data: {
+    content: string;
+    contentType: 'text';
+    clientMessageId: string;
+    replyToId?: string;
+  }) => {
+    const response = await api.post(`/conversations/${conversationId}/messages`, data);
+    return messageSchema.parse(response.data);
+  },
+
+  deleteMessage: async (conversationId: string, messageId: string): Promise<void> => {
+    await api.delete(`/conversations/${conversationId}/messages/${messageId}`);
   },
 };
 

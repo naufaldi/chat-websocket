@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { loginSchema, type LoginInput } from '@chat/shared/schemas/auth';
 import { useLogin } from '../../hooks/useAuth';
 import { extractRateLimitError } from '../../lib/api';
@@ -10,15 +10,27 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Loader2, MessageCircle, Clock } from 'lucide-react';
+import { Loader2, MessageCircle, Clock, AlertCircle } from 'lucide-react';
 
 type LoginFormData = LoginInput;
 
 export function LoginForm() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const login = useLogin();
   const [error, setError] = useState<string>('');
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
+  const [showUnauthorizedMsg, setShowUnauthorizedMsg] = useState(false);
+
+  // Check if user was redirected due to unauthorized access
+  useEffect(() => {
+    const unauthorized = searchParams.get('unauthorized');
+    if (unauthorized === 'true') {
+      setShowUnauthorizedMsg(true);
+      // Clear the query param
+      navigate('/login', { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   const {
     register,
@@ -66,6 +78,15 @@ export function LoginForm() {
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {showUnauthorizedMsg && (
+          <Alert className="border-amber-200 bg-amber-50">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              Your session has expired. Please log in again.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {error && (
           <Alert variant="destructive" className="border-red-200 bg-red-50">
             {retryAfter && <Clock className="h-4 w-4" />}

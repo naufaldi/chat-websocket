@@ -209,6 +209,29 @@ export class ChatSocketService {
     });
     socket.on('connect_error', () => this.setStatus('reconnecting'));
     socket.on('reconnect_attempt', () => this.setStatus('reconnecting'));
+    
+    // Handle auth:error - clear tokens and redirect to login
+    socket.on('auth:error', (payload: unknown) => {
+      const error = payload as { code?: string; error?: string };
+      
+      // Only handle auth-related errors
+      if (error?.code === 'AUTH_FAILED') {
+        console.warn('Socket auth failed:', error.error);
+        
+        // Clear tokens
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        
+        // Stop heartbeat and disconnect
+        this.stopHeartbeat();
+        this.setStatus('disconnected');
+        
+        // Redirect to login if not already there
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+          window.location.href = '/login?unauthorized=true';
+        }
+      }
+    });
   }
 
   private startHeartbeat(): void {

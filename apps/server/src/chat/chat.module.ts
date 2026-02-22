@@ -5,9 +5,10 @@ import { MessagesRepository } from '../messages/messages.repository';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
 import { PresenceService } from './presence.service';
+import { ReadReceiptsModule } from '../read-receipts/read-receipts.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, ReadReceiptsModule],
   providers: [ChatGateway, ChatService, PresenceService, ConversationsRepository, MessagesRepository],
   exports: [ChatService, PresenceService],
 })

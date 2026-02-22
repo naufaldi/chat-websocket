@@ -81,6 +81,15 @@ export function ChatPage() {
     },
   });
 
+  // Delete message mutation
+  const deleteMessageMutation = useMutation({
+    mutationFn: ({ conversationId, messageId }: { conversationId: string; messageId: string }) => 
+      conversationsApi.deleteMessage(conversationId, messageId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages', selectedId] });
+    },
+  });
+
   const handleSelect = (id: string) => {
     setSearchParams({ chat: id });
   };
@@ -98,6 +107,12 @@ export function ChatPage() {
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
       deleteMutation.mutate(id);
+    }
+  };
+
+  const handleDeleteMessage = (messageId: string) => {
+    if (confirm('Are you sure you want to delete this message?') && selectedId) {
+      deleteMessageMutation.mutate({ conversationId: selectedId, messageId });
     }
   };
 
@@ -153,10 +168,13 @@ export function ChatPage() {
               messages.map((message) => (
                 <MessageBubble
                   key={message.id}
+                  messageId={message.id}
+                  conversationId={selectedId}
                   content={message.content}
                   timestamp={message.createdAt}
                   isSent={message.senderId === user?.id}
                   isRead={message.status === 'read' || message.status === 'delivered'}
+                  onDelete={handleDeleteMessage}
                 />
               ))
             )}

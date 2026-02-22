@@ -8,13 +8,15 @@ import {
   index,
   uniqueIndex,
   primaryKey,
-  pgEnum
+  pgEnum,
+  integer
 } from 'drizzle-orm/pg-core';
 
 export const conversationTypeEnum = pgEnum('conversation_type', ['direct', 'group']);
 export const contentTypeEnum = pgEnum('content_type', ['text', 'image', 'file']);
 export const messageStatusEnum = pgEnum('message_status', ['sending', 'delivered', 'read', 'error']);
 export const participantRoleEnum = pgEnum('participant_role', ['owner', 'admin', 'member']);
+export const presenceSharingEnum = pgEnum('presence_sharing', ['everyone', 'friends', 'nobody']);
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -25,6 +27,9 @@ export const users = pgTable('users', {
   avatarUrl: varchar('avatar_url', { length: 500 }),
   isActive: boolean('is_active').default(true).notNull(),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
+  // Presence settings
+  presenceEnabled: boolean('presence_enabled').default(true).notNull(),
+  presenceSharing: presenceSharingEnum('presence_sharing').default('everyone').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
@@ -52,8 +57,22 @@ export const conversationParticipants = pgTable('conversation_participants', {
   role: participantRoleEnum('role').default('member').notNull(),
   joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow().notNull(),
   isActive: boolean('is_active').default(true).notNull(),
+  // Read receipt tracking
+  lastReadMessageId: uuid('last_read_message_id'),
+  lastReadAt: timestamp('last_read_at', { withTimezone: true }),
 }, (table) => ({
   convUserIdx: uniqueIndex('idx_participants_conv_user').on(table.conversationId, table.userId),
+}));
+
+// Read receipts table
+export const readReceipts = pgTable('read_receipts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  messageId: uuid('message_id').references(() => messages.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  readAt: timestamp('read_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  messageUserIdx: uniqueIndex('idx_read_receipts_message_user').on(table.messageId, table.userId),
+  userIdx: index('idx_read_receipts_user').on(table.userId),
 }));
 
 export const messages = pgTable('messages', {

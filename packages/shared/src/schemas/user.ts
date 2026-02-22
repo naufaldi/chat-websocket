@@ -30,6 +30,21 @@ export const userSearchResponseSchema = z.object({
   users: z.array(userSearchResultSchema),
 });
 
+// Update profile schema
+export const updateProfileSchema = z.object({
+  displayName: z.string().min(1).max(100).optional(),
+  avatarUrl: z.string().url().nullable().optional(),
+});
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+// Privacy settings schema
+export const privacySettingsSchema = z.object({
+  presenceSharing: z.enum(['everyone', 'friends', 'nobody']),
+});
+
+export type PrivacySettings = z.infer<typeof privacySettingsSchema>;
+
 export type User = z.infer<typeof userSchema>;
 export type UserPublic = z.infer<typeof userPublicSchema>;
 export type UserSearchResult = z.infer<typeof userSearchResultSchema>;

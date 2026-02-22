@@ -42,6 +42,11 @@ export class ChatService {
     return this.conversationsRepository.isUserParticipant(conversationId, userId);
   }
 
+  async isDirectConversation(conversationId: string): Promise<boolean> {
+    const conversation = await this.conversationsRepository.findById(conversationId);
+    return conversation?.type === 'direct';
+  }
+
   async assertMessageRateLimit(userId: string): Promise<void> {
     const now = Date.now();
     const windowStart = now - RATE_LIMIT_WINDOW_MS;

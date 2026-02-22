@@ -29,6 +29,9 @@ import {
   typingStoppedEventSchema,
   unsubscribeEventSchema,
   unsubscribedEventSchema,
+  receiptReadEventSchema,
+  receiptUpdatedEventSchema,
+  receiptCountEventSchema,
 } from '@chat/shared';
 import { TokenBlacklistService } from '../auth/token-blacklist.service';
 import { ChatService } from './chat.service';
@@ -62,6 +65,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly tokenBlacklistService: TokenBlacklistService,
     private readonly chatService: ChatService,
     private readonly presenceService: PresenceService,
+    private readonly readReceiptsService: ReadReceiptsService,
   ) {}
 
   async handleConnection(client: SocketWithUserData): Promise<void> {
@@ -259,6 +263,55 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         status: parse.data.status,
       }),
     );
+  }
+
+  @SubscribeMessage('receipt:read')
+  async handleReceiptRead(
+    @ConnectedSocket() client: SocketWithUserData,
+    @MessageBody() payload: unknown,
+  ): Promise<void> {
+    const parse = receiptReadEventSchema.safeParse(payload);
+    const userId = client.data.userId;
+    if (!parse.success || !userId) {
+      return;
+    }
+
+    const { conversationId, messageId } = parse.data;
+
+    try {
+      // Mark as read in database
+      await this.readReceiptsService.markAsRead(userId, conversationId, messageId);
+
+      // Get conversation type to determine broadcast format
+      const isDirect = await this.chatService.isDirectConversation(conversationId);
+
+      if (isDirect) {
+        // 1:1 chat - instant notification
+        client.to(this.toConversationRoom(conversationId)).emit(
+          'receipt:updated',
+          receiptUpdatedEventSchema.parse({
+            messageId,
+            userId,
+            readAt: new Date().toISOString(),
+          }),
+        );
+      } else {
+        // Group chat - send count
+        const receipts = await this.readReceiptsService.getReceiptsForMessage(messageId, userId);
+        
+        client.to(this.toConversationRoom(conversationId)).emit(
+          'receipt:count',
+          receiptCountEventSchema.parse({
+            messageId,
+            readCount: receipts.readCount,
+            totalParticipants: receipts.totalCount,
+          }),
+        );
+      }
+    } catch (error) {
+      // Silently fail - don't disrupt the user
+      this.logger.debug(`Failed to mark receipt: ${error}`);
+    }
   }
 
   private extractToken(client: SocketWithUserData): string | null {
