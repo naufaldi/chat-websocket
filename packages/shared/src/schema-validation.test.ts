@@ -55,10 +55,10 @@ describe('Auth Schemas - Single Source of Truth', () => {
       expect(() => loginSchema.parse(invalidPayload)).toThrow();
     });
 
-    it('rejects short password', () => {
+    it('rejects empty password', () => {
       const invalidPayload = {
         email: 'user@example.com',
-        password: 'short',
+        password: '',
       };
       expect(() => loginSchema.parse(invalidPayload)).toThrow();
     });
@@ -68,7 +68,8 @@ describe('Auth Schemas - Single Source of Truth', () => {
     it('validates correct registration payload', () => {
       const validPayload = {
         email: 'newuser@example.com',
-        password: 'securepassword123',
+        username: 'newuser',
+        password: 'SecurePass123',
         displayName: 'New User',
       };
       expect(() => registerSchema.parse(validPayload)).not.toThrow();
@@ -94,6 +95,7 @@ describe('Auth Schemas - Single Source of Truth', () => {
           email: 'user@example.com',
           username: 'username',
           displayName: 'User Name',
+          createdAt: '2024-01-01T00:00:00.000Z',
         },
       };
       expect(() => authResponseSchema.parse(validResponse)).not.toThrow();

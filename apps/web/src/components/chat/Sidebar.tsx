@@ -1,7 +1,8 @@
-import { Search } from 'lucide-react';
+import { Search, Settings, Menu } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ConversationItem } from './ConversationItem';
 import type { ConversationListItem } from '@/types/conversation';
+import { Link } from 'react-router-dom';
 
 interface SidebarProps {
   conversations: ConversationListItem[];
@@ -93,7 +94,13 @@ export function Sidebar({
       </div>
 
       {/* Floating Action Button */}
-      <div className="p-4">
+      <div className="p-4 flex justify-between items-center">
+        <Link
+          to="/settings"
+          className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 transition-colors"
+        >
+          <Settings className="w-5 h-5" />
+        </Link>
         <button
           onClick={onCreateChat}
           className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-blue-600 transition-colors"

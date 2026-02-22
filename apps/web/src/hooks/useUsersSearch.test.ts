@@ -14,27 +14,27 @@ describe('useUsersSearch', () => {
     expect(typeof useUsersSearch).toBe('function');
   });
 
-  it('has debounce functionality', () => {
-    // Test debounce logic separately
-    const debounce = <T>(fn: T, delay: number) => {
+  it('has debounce functionality', async () => {
+    // Test debounce logic separately - just verify it exists and works
+    const debounce = <T>(fn: () => void, delay: number) => {
       let timeoutId: ReturnType<typeof setTimeout>;
       return (value: T) => {
         clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => fn, delay);
+        timeoutId = setTimeout(() => fn(), delay);
       };
     };
 
     let callCount = 0;
-    const debouncedFn = debounce(() => callCount++, 300);
+    const debouncedFn = debounce(() => callCount++, 50);
 
     debouncedFn(1);
     debouncedFn(2);
     debouncedFn(3);
 
-    // Should only call once after delay
-    setTimeout(() => {
-      expect(callCount).toBe(1);
-    }, 350);
+    // Wait for debounce to complete
+    await new Promise(r => setTimeout(r, 100));
+    
+    expect(callCount).toBe(1);
   });
 
   it('search query requires minimum 3 characters', () => {
