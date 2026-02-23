@@ -1,26 +1,53 @@
 import { useState } from 'react';
 import { Check, CheckCheck, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { MessageStatus } from '@chat/shared/schemas/message';
 import type { ReadReceiptWithUser } from '@chat/shared/schemas/read-receipt';
 
 interface ReadReceiptProps {
-  isRead: boolean;
-  isDelivered?: boolean;
+  status: MessageStatus;
   className?: string;
 }
 
-export function ReadReceipt({ isRead, isDelivered = true, className }: ReadReceiptProps) {
-  // Single checkmark for delivered, double for read
-  const Icon = isRead ? CheckCheck : Check;
+function getReceiptMetadata(status: MessageStatus): {
+  ariaLabel: string;
+  icon: typeof Check | typeof CheckCheck;
+  colorClass: string;
+} {
+  if (status === 'read') {
+    return {
+      ariaLabel: 'Message read',
+      icon: CheckCheck,
+      colorClass: 'text-[#3390EC]',
+    };
+  }
+
+  if (status === 'delivered') {
+    return {
+      ariaLabel: 'Message delivered',
+      icon: CheckCheck,
+      colorClass: 'text-gray-400',
+    };
+  }
+
+  return {
+    ariaLabel: 'Message sent',
+    icon: Check,
+    colorClass: 'text-gray-400',
+  };
+}
+
+export function ReadReceipt({ status, className }: ReadReceiptProps) {
+  const { ariaLabel, icon: Icon, colorClass } = getReceiptMetadata(status);
 
   return (
     <span
       className={cn(
         'inline-flex items-center',
-        isRead ? 'text-blue-500' : 'text-gray-400',
+        colorClass,
         className
       )}
-      aria-label={isRead ? 'Message read' : isDelivered ? 'Message delivered' : 'Message sent'}
+      aria-label={ariaLabel}
     >
       <Icon className="w-4 h-4" />
     </span>
@@ -110,7 +137,7 @@ export function ReadReceiptCount({ readCount, totalCount, onClick, className }: 
 
   if (totalCount <= 2) {
     // For 1:1 chats, just show the double checkmark
-    return <ReadReceipt isRead={readCount >= 1} />;
+    return <ReadReceipt status={readCount >= 1 ? 'read' : 'delivered'} />;
   }
 
   const handleClick = () => {

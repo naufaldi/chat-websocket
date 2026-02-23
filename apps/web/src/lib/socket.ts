@@ -4,9 +4,11 @@ import {
   type MessageReceivedEvent,
   type MessageSentEvent,
   type MessageErrorEvent,
+  type PresenceUpdateEvent,
   type TypingStartedEvent,
   type TypingStoppedEvent,
 } from '@chat/shared/schemas/socket';
+import type { ReceiptCountEvent, ReceiptUpdatedEvent } from '@chat/shared/schemas/read-receipt';
 import { io, type Socket } from 'socket.io-client';
 
 const HEARTBEAT_INTERVAL_MS = 15_000;
@@ -18,6 +20,9 @@ type ServerEventPayloadMap = {
   'message:received': MessageReceivedEvent;
   'message:sent': MessageSentEvent;
   'message:error': MessageErrorEvent;
+  'presence:update': PresenceUpdateEvent;
+  'receipt:updated': ReceiptUpdatedEvent;
+  'receipt:count': ReceiptCountEvent;
   'typing:started': TypingStartedEvent;
   'typing:stopped': TypingStoppedEvent;
 };

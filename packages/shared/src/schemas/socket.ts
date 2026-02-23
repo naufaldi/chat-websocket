@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import { messageSchema, sendMessageSchema } from './message';
+import {
+  receiptCountEventSchema,
+  receiptReadEventSchema,
+  receiptUpdatedEventSchema,
+} from './read-receipt';
 
 export const websocketErrorCodeSchema = z.enum([
   'AUTH_FAILED',
@@ -105,6 +110,7 @@ export const clientToServerEventSchemas = {
   'typing:start': typingStartEventSchema,
   'typing:stop': typingStopEventSchema,
   'presence:heartbeat': presenceHeartbeatEventSchema,
+  'receipt:read': receiptReadEventSchema,
 } as const;
 
 export const serverToClientEventSchemas = {
@@ -118,6 +124,8 @@ export const serverToClientEventSchemas = {
   'typing:started': typingStartedEventSchema,
   'typing:stopped': typingStoppedEventSchema,
   'presence:update': presenceUpdateEventSchema,
+  'receipt:updated': receiptUpdatedEventSchema,
+  'receipt:count': receiptCountEventSchema,
 } as const;
 
 export type WebsocketErrorCode = z.infer<typeof websocketErrorCodeSchema>;

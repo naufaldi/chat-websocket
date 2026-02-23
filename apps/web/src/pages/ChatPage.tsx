@@ -13,10 +13,12 @@ import { ConnectionStatus } from '@/components/chat/ConnectionStatus';
 import { useSocket } from '@/hooks/useSocket';
 import { useChatSocket } from '@/hooks/useChatSocket';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
-import { useMessages } from '@/hooks/useMessages';
+import { messageKeys, useMessages } from '@/hooks/useMessages';
 import { conversationsApi } from '@/lib/api';
+import { ackOptimistic, markMessageError, upsertMessage } from '@/lib/messages-cache';
 import type { CreateConversationInput } from '@chat/shared/schemas/conversation';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { Message } from '@chat/shared/schemas/message';
+import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useUsersSearch } from '@/hooks/useUsersSearch';
 
 export function ChatPage() {
@@ -37,12 +39,58 @@ export function ChatPage() {
 
   const selected = conversations.find((c) => c.id === selectedId);
   const { status: connectionStatus, isConnected } = useSocket();
-  const { messages, typingUserIds, sendMessage, sendTypingStart, sendTypingStop } = useChatSocket({
+  const patchMessagesCache = (
+    conversationId: string | undefined,
+    updater: (messages: Message[]) => Message[],
+  ) => {
+    if (!conversationId) {
+      return;
+    }
+
+    queryClient.setQueryData<InfiniteData<{ messages: Message[] }, string | undefined>>(
+      messageKeys.list(conversationId),
+      (current) => {
+        if (!current) {
+          return {
+            pages: [{ messages: updater([]) }],
+            pageParams: [undefined],
+          };
+        }
+
+        const firstPage = current.pages[0] ?? { messages: [] };
+        const nextFirstPage = {
+          ...firstPage,
+          messages: updater(firstPage.messages),
+        };
+
+        return {
+          ...current,
+          pages: [nextFirstPage, ...current.pages.slice(1)],
+        };
+      },
+    );
+  };
+
+  const { typingUserIds, sendMessage, sendTypingStart, sendTypingStop } = useChatSocket({
     conversationId: selectedId,
     currentUserId: user?.id,
     enabled: isConnected,
     onReconnectSync: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+    onOptimisticMessage: (message) => {
+      patchMessagesCache(message.conversationId, (messages) => upsertMessage(messages, message));
+    },
+    onMessageReceived: (message) => {
+      patchMessagesCache(message.conversationId, (messages) => upsertMessage(messages, message));
+    },
+    onMessageSent: ({ conversationId, clientMessageId, messageId, timestamp }) => {
+      patchMessagesCache(conversationId, (messages) =>
+        ackOptimistic(messages, { clientMessageId, messageId, timestamp }),
+      );
+    },
+    onMessageError: ({ clientMessageId }) => {
+      patchMessagesCache(selectedId, (messages) => markMessageError(messages, clientMessageId));
     },
   });
 
@@ -52,8 +100,6 @@ export function ChatPage() {
     isFetchingNextPage: isFetchingMessagesNextPage,
     fetchNextPage: fetchMessagesNextPage,
   } = useMessages({ conversationId: selectedId });
-
-  const displayMessages = infiniteMessages.length > 0 ? infiniteMessages : messages;
 
   const { onInputActivity } = useTypingIndicator({
     conversationId: selectedId,
@@ -97,7 +143,10 @@ export function ChatPage() {
     mutationFn: ({ conversationId, messageId }: { conversationId: string; messageId: string }) => 
       conversationsApi.deleteMessage(conversationId, messageId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['messages', selectedId] });
+      if (!selectedId) {
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: messageKeys.list(selectedId) });
     },
   });
 
@@ -175,7 +224,7 @@ export function ChatPage() {
             connectionStatus={<ConnectionStatus status={connectionStatus} />}
           />
           <MessageList
-            messages={displayMessages}
+            messages={infiniteMessages}
             currentUserId={user?.id}
             conversationId={selectedId}
             hasNextPage={hasMessagesNextPage}

@@ -1,22 +1,24 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { MoreVertical, Trash2, Check, CheckCheck } from 'lucide-react';
+import { MoreVertical, Trash2 } from 'lucide-react';
+import type { MessageStatus } from '@chat/shared';
+import { ReadReceipt } from './ReadReceipt';
 
 interface MessageBubbleProps {
   content: string;
   timestamp: string;
   isSent: boolean;
-  isRead?: boolean;
+  status?: MessageStatus;
   messageId?: string;
   conversationId?: string;
   onDelete?: (messageId: string) => void;
 }
 
-export function MessageBubble({ 
-  content, 
-  timestamp, 
-  isSent, 
-  isRead,
+export function MessageBubble({
+  content,
+  timestamp,
+  isSent,
+  status = 'delivered',
   messageId,
   conversationId,
   onDelete,
@@ -34,48 +36,43 @@ export function MessageBubble({
     <div className={`flex ${isSent ? 'justify-end' : 'justify-start'} mb-2 group`}>
       <div className="relative max-w-[40%]">
         <div
-          className={`px-4 py-2 rounded-2xl ${
+          className={`relative px-4 py-2 rounded-2xl ${
             isSent
               ? 'bg-[#EFFDDE] rounded-br-md' // Telegram sent (green)
               : 'bg-white border border-gray-200 rounded-bl-md' // Received (white)
           }`}
         >
-          <p className="text-sm break-words whitespace-pre-wrap min-w-[60px]">{content}</p>
-          <div className="flex items-end justify-end gap-1 mt-1">
+          {/* Three-dot menu - inside bubble at top right */}
+          {isSent && messageId && onDelete && (
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-gray-200/80 hover:bg-gray-300 rounded-full z-10"
+            >
+              <MoreVertical className="w-3 h-3 text-gray-600" />
+            </button>
+          )}
+
+          {/* Delete menu dropdown */}
+          {showMenu && (
+            <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-20 min-w-[120px]">
+              <button
+                onClick={handleDelete}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 w-full"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            </div>
+          )}
+
+          <p className="text-sm break-words whitespace-pre-wrap min-w-[60px] pr-6">{content}</p>
+          <div className="mt-1 flex items-center justify-end gap-1">
             <span className="text-[10px] text-gray-400">
               {format(new Date(timestamp), 'HH:mm')}
             </span>
-            {isSent && (
-              <span className={`flex flex-col items-center leading-[0.5] ${isRead ? 'text-[#3390EC]' : 'text-gray-400'}`}>
-                <Check className="w-3 h-3" />
-                <CheckCheck className="w-3 h-3 -mt-[2px]" />
-              </span>
-            )}
+            {isSent ? <ReadReceipt status={status} className="translate-y-[1px]" /> : null}
           </div>
         </div>
-        
-        {/* Delete button (only for sent messages) */}
-        {isSent && messageId && onDelete && (
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="absolute -top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-gray-100 rounded-full hover:bg-gray-200"
-          >
-            <MoreVertical className="w-4 h-4 text-gray-500" />
-          </button>
-        )}
-        
-        {/* Delete menu */}
-        {showMenu && (
-          <div className="absolute right-0 top-0 mt-6 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-10">
-            <button
-              onClick={handleDelete}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

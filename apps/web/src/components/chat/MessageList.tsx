@@ -85,7 +85,7 @@ export function MessageList({
           content={message.content}
           timestamp={message.createdAt}
           isSent={message.senderId === currentUserId}
-          isRead={message.status === 'read' || message.status === 'delivered'}
+          status={message.status}
           onDelete={onDeleteMessage}
         />
       ))}

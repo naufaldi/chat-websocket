@@ -18,6 +18,15 @@ interface UseChatSocketOptions {
   enabled?: boolean;
   service?: ChatSocketService;
   onReconnectSync?: (payload: { conversationId: string; disconnectedAt: string }) => void;
+  onOptimisticMessage?: (message: Message) => void;
+  onMessageReceived?: (message: Message) => void;
+  onMessageSent?: (payload: {
+    clientMessageId: string;
+    messageId: string;
+    timestamp: string;
+    conversationId: string;
+  }) => void;
+  onMessageError?: (payload: { clientMessageId: string }) => void;
 }
 
 export function useChatSocket(options: UseChatSocketOptions = {}) {
@@ -27,6 +36,10 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
     enabled = true,
     service = chatSocketService,
     onReconnectSync,
+    onOptimisticMessage,
+    onMessageReceived,
+    onMessageSent,
+    onMessageError,
   } = options;
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -123,6 +136,7 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
         return;
       }
 
+      onMessageReceived?.(message);
       setMessages((prev) => {
         if (prev.some((existing) => existing.id === message.id)) {
           return prev;
@@ -131,7 +145,13 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
       });
     });
 
-    const offMessageSent = service.on('message:sent', ({ clientMessageId, messageId, timestamp }) => {
+    const offMessageSent = service.on('message:sent', ({ clientMessageId, messageId, timestamp, conversationId: eventConversationId }) => {
+      onMessageSent?.({
+        clientMessageId,
+        messageId,
+        timestamp,
+        conversationId: eventConversationId,
+      });
       setMessages((prev) =>
         prev.map((message) =>
           message.clientMessageId === clientMessageId
@@ -148,6 +168,7 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
     });
 
     const offMessageError = service.on('message:error', ({ clientMessageId }) => {
+      onMessageError?.({ clientMessageId });
       setMessages((prev) =>
         prev.map((message) =>
           message.clientMessageId === clientMessageId ? { ...message, status: 'error' } : message
@@ -178,7 +199,7 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
       offTypingStarted();
       offTypingStopped();
     };
-  }, [conversationId, service]);
+  }, [conversationId, onMessageError, onMessageReceived, onMessageSent, service]);
 
   const sendMessage = useCallback(
     (content: string) => {
@@ -211,6 +232,7 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
         deletedAt: null,
       };
 
+      onOptimisticMessage?.(optimisticMessage);
       setMessages((prev) => [...prev, optimisticMessage]);
 
       if (!isConnected) {
@@ -233,7 +255,7 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
         );
       }
     },
-    [conversationId, currentUserId, enabled, service]
+    [conversationId, currentUserId, enabled, onOptimisticMessage, service]
   );
 
   const sendTypingStart = useCallback(() => {
