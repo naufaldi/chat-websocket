@@ -10,6 +10,7 @@ import { ChatModule } from './chat/chat.module';
 import { MessagesModule } from './messages/messages.module';
 import { ReadReceiptsModule } from './read-receipts/read-receipts.module';
 import { PresenceModule } from './presence/presence.module';
+import { MetricsModule } from './metrics/metrics.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { PresenceModule } from './presence/presence.module';
     MessagesModule,
     ReadReceiptsModule,
     PresenceModule,
+    MetricsModule,
   ],
 })
 export class AppModule {}

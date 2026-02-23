@@ -54,7 +54,7 @@ export class MetricsService implements OnModuleInit {
     this.websocketConnectionsActive.set(count);
   }
 
-  getMetrics(): string {
+  async getMetrics(): Promise<string> {
     return this.register.metrics();
   }
 }
