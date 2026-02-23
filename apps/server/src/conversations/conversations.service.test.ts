@@ -30,18 +30,45 @@ function createRepositoryMock() {
 function createMessagesRepositoryMock() {
   return {
     findByConversation: vi.fn(),
+    findByClientMessageId: vi.fn(),
+    create: vi.fn(),
+  };
+}
+
+function createUsersRepositoryMock() {
+  return {
+    findById: vi.fn(),
+  };
+}
+
+function createDbMock() {
+  return {
+    update: vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(undefined),
+      }),
+    }),
   };
 }
 
 describe('ConversationsService', () => {
   let repository: ReturnType<typeof createRepositoryMock>;
   let messagesRepository: ReturnType<typeof createMessagesRepositoryMock>;
+  let usersRepository: ReturnType<typeof createUsersRepositoryMock>;
+  let db: ReturnType<typeof createDbMock>;
   let service: ConversationsService;
 
   beforeEach(() => {
     repository = createRepositoryMock();
     messagesRepository = createMessagesRepositoryMock();
-    service = new ConversationsService(repository as never, messagesRepository as never);
+    usersRepository = createUsersRepositoryMock();
+    db = createDbMock();
+    service = new ConversationsService(
+      repository as never,
+      messagesRepository as never,
+      usersRepository as never,
+      db as never,
+    );
   });
 
   it('returns flat paginated list response matching shared schema', async () => {
@@ -260,5 +287,143 @@ describe('ConversationsService', () => {
     expect(messagesListResponseSchema.parse(result)).toEqual(result);
     expect(result.messages[0]?.content).toBe('older message');
     expect(result.messages[1]?.content).toBe('newer message');
+  });
+
+  describe('sendMessageHttp', () => {
+    const CLIENT_MESSAGE_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
+    it('should create message and return response with sender info', async () => {
+      repository.findById.mockResolvedValue({
+        id: CONVERSATION_ID,
+        type: 'direct',
+        title: null,
+        avatarUrl: null,
+        createdBy: USER_ID,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      repository.isUserParticipant.mockResolvedValue(true);
+      messagesRepository.findByClientMessageId.mockResolvedValue(null);
+      messagesRepository.create.mockResolvedValue({
+        id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        conversationId: CONVERSATION_ID,
+        senderId: USER_ID,
+        content: 'Hello world',
+        contentType: 'text',
+        clientMessageId: CLIENT_MESSAGE_ID,
+        status: 'delivered',
+        replyToId: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        deletedAt: null,
+      });
+      usersRepository.findById.mockResolvedValue({
+        id: USER_ID,
+        email: 'test@test.com',
+        username: 'testuser',
+        passwordHash: 'hash',
+        displayName: 'Test User',
+        avatarUrl: null,
+        isActive: true,
+        lastSeenAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await service.sendMessageHttp(CONVERSATION_ID, USER_ID, {
+        content: 'Hello world',
+        contentType: 'text',
+        clientMessageId: CLIENT_MESSAGE_ID,
+      });
+
+      expect(result.existing).toBe(false);
+      expect(result.message.id).toBe('dddddddd-dddd-4ddd-8ddd-dddddddddddd');
+      expect(result.message.content).toBe('Hello world');
+      expect(result.message.sender.id).toBe(USER_ID);
+      expect(result.message.sender.username).toBe('testuser');
+      expect(result.message.sender.displayName).toBe('Test User');
+    });
+
+    it('should return existing message for duplicate clientMessageId', async () => {
+      repository.findById.mockResolvedValue({
+        id: CONVERSATION_ID,
+        type: 'direct',
+        title: null,
+        avatarUrl: null,
+        createdBy: USER_ID,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      repository.isUserParticipant.mockResolvedValue(true);
+      messagesRepository.findByClientMessageId.mockResolvedValue({
+        id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+        conversationId: CONVERSATION_ID,
+        senderId: USER_ID,
+        content: 'Existing message',
+        contentType: 'text',
+        clientMessageId: CLIENT_MESSAGE_ID,
+        status: 'delivered',
+        replyToId: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        deletedAt: null,
+      });
+      usersRepository.findById.mockResolvedValue({
+        id: USER_ID,
+        email: 'test@test.com',
+        username: 'testuser',
+        passwordHash: 'hash',
+        displayName: 'Test User',
+        avatarUrl: null,
+        isActive: true,
+        lastSeenAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await service.sendMessageHttp(CONVERSATION_ID, USER_ID, {
+        content: 'Hello world',
+        contentType: 'text',
+        clientMessageId: CLIENT_MESSAGE_ID,
+      });
+
+      expect(result.existing).toBe(true);
+      expect(result.message.id).toBe('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
+      expect(result.message.content).toBe('Existing message');
+      expect(messagesRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('should throw 403 for non-participant', async () => {
+      repository.findById.mockResolvedValue({
+        id: CONVERSATION_ID,
+        type: 'direct',
+        title: null,
+        avatarUrl: null,
+        createdBy: USER_ID,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      repository.isUserParticipant.mockResolvedValue(false);
+
+      await expect(
+        service.sendMessageHttp(CONVERSATION_ID, OTHER_USER_ID, {
+          content: 'Hello world',
+          contentType: 'text',
+          clientMessageId: CLIENT_MESSAGE_ID,
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('should throw NotFoundException for non-existent conversation', async () => {
+      repository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.sendMessageHttp(CONVERSATION_ID, USER_ID, {
+          content: 'Hello world',
+          contentType: 'text',
+          clientMessageId: CLIENT_MESSAGE_ID,
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
   });
 });

@@ -5,7 +5,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { ChatLayout } from '@/components/chat/ChatLayout';
 import { Sidebar } from '@/components/chat/Sidebar';
 import { ChatHeader } from '@/components/chat/ChatHeader';
-import { MessageBubble } from '@/components/chat/MessageBubble';
+import { MessageList } from '@/components/chat/MessageList';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { CreateChatModal } from '@/components/chat/CreateChatModal';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
@@ -13,6 +13,7 @@ import { ConnectionStatus } from '@/components/chat/ConnectionStatus';
 import { useSocket } from '@/hooks/useSocket';
 import { useChatSocket } from '@/hooks/useChatSocket';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { useMessages } from '@/hooks/useMessages';
 import { conversationsApi } from '@/lib/api';
 import type { CreateConversationInput } from '@chat/shared/schemas/conversation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -44,6 +45,16 @@ export function ChatPage() {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
   });
+
+  const {
+    messages: infiniteMessages,
+    hasNextPage: hasMessagesNextPage,
+    isFetchingNextPage: isFetchingMessagesNextPage,
+    fetchNextPage: fetchMessagesNextPage,
+  } = useMessages({ conversationId: selectedId });
+
+  const displayMessages = infiniteMessages.length > 0 ? infiniteMessages : messages;
+
   const { onInputActivity } = useTypingIndicator({
     conversationId: selectedId,
     onTypingStart: () => sendTypingStart(),
@@ -124,7 +135,11 @@ export function ChatPage() {
   const getDisplayName = (conversation: typeof selected) => {
     if (!conversation) return 'Unknown';
     if (conversation.title) return conversation.title;
-    const otherParticipant = conversation.participants.find((p) => p.role !== 'owner');
+    const otherParticipant = conversation.participants.find((p) => p.user.id !== user?.id);
+    if (!otherParticipant) {
+      const fallback = conversation.participants[0];
+      return fallback?.user.displayName || fallback?.user.username || 'Direct Chat';
+    }
     return otherParticipant?.user.displayName || otherParticipant?.user.username || 'Direct Chat';
   };
 
@@ -159,26 +174,15 @@ export function ChatPage() {
             status={isConnected ? 'online' : 'offline'}
             connectionStatus={<ConnectionStatus status={connectionStatus} />}
           />
-          <div className="flex-1 overflow-y-auto p-4 bg-white">
-            {messages.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-gray-400">
-                No messages yet. Start the conversation.
-              </div>
-            ) : (
-              messages.map((message) => (
-                <MessageBubble
-                  key={message.id}
-                  messageId={message.id}
-                  conversationId={selectedId}
-                  content={message.content}
-                  timestamp={message.createdAt}
-                  isSent={message.senderId === user?.id}
-                  isRead={message.status === 'read' || message.status === 'delivered'}
-                  onDelete={handleDeleteMessage}
-                />
-              ))
-            )}
-          </div>
+          <MessageList
+            messages={displayMessages}
+            currentUserId={user?.id}
+            conversationId={selectedId}
+            hasNextPage={hasMessagesNextPage}
+            isFetchingNextPage={isFetchingMessagesNextPage}
+            fetchNextPage={() => fetchMessagesNextPage()}
+            onDeleteMessage={handleDeleteMessage}
+          />
           <TypingIndicator names={typingNames} />
           <MessageInput onSend={handleSendMessage} onTextChange={onInputActivity} />
         </>

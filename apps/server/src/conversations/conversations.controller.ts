@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ConversationsService } from './conversations.service';
-import { createConversationSchema } from '@chat/shared';
+import { createConversationSchema, sendMessageSchema } from '@chat/shared';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
   ApiTags,
@@ -88,6 +88,27 @@ export class ConversationsController {
   ) {
     const safeLimit = Math.min(Math.max(1, limit || 50), 100);
     return this.conversationsService.listMessages(id, req.user.userId, safeLimit);
+  }
+
+  @Post(':id/messages')
+  @ApiOperation({ summary: 'Send a message via HTTP' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiResponse({ status: 201, description: 'Message sent' })
+  @ApiResponse({ status: 200, description: 'Message already exists (idempotent)' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 403, description: 'Not a participant' })
+  @ApiResponse({ status: 429, description: 'Rate limited' })
+  async sendMessage(
+    @Request() req: { user: { userId: string } },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(sendMessageSchema)) data: {
+      content: string;
+      contentType: 'text';
+      clientMessageId: string;
+      replyToId?: string;
+    },
+  ) {
+    return this.conversationsService.sendMessageHttp(id, req.user.userId, data);
   }
 
   @Delete(':id')

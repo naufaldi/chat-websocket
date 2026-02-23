@@ -22,8 +22,10 @@ const MAX_REFRESH_ATTEMPTS = 3;
 
 // Auth endpoints that don't require token refresh on 401
 const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh'];
+const NO_RETRY_ENDPOINTS = ['/auth/me']; // Endpoints that should not retry with refresh
 
 const isAuthEndpoint = (url: string) => AUTH_ENDPOINTS.some(endpoint => url.includes(endpoint));
+const isNoRetryEndpoint = (url: string) => NO_RETRY_ENDPOINTS.some(endpoint => url.includes(endpoint));
 
 export const api = axios.create({
   baseURL: `${API_URL}/api`,
@@ -58,6 +60,12 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       originalRequest._retry = true;
 
+      // For /auth/me endpoint, don't try to refresh - clear tokens immediately
+      if (isNoRetryEndpoint(originalRequest.url)) {
+        handleAuthFailure();
+        return Promise.reject(error);
+      }
+
       // Check if we should try to refresh (max 3 attempts)
       if (refreshAttempts < MAX_REFRESH_ATTEMPTS) {
         refreshAttempts++;
@@ -65,15 +73,9 @@ api.interceptors.response.use(
         const refreshToken = localStorage.getItem('refreshToken');
 
         if (!refreshToken) {
-          // No refresh token - clear tokens, redirect to login, and reject
+          // No refresh token - clear tokens, notify app, and reject
           refreshAttempts = 0;
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          
-          // Redirect to login if not already there
-          if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-            window.location.href = '/login?unauthorized=true';
-          }
+          handleAuthFailure();
           return Promise.reject(error);
         }
 
@@ -94,27 +96,15 @@ api.interceptors.response.use(
 
           return api(originalRequest);
         } catch (refreshError) {
-          // Refresh failed - clear tokens and redirect to login
+          // Refresh failed - clear tokens, notify app, and reject
           refreshAttempts = 0;
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          
-          // Redirect to login if not already there
-          if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-            window.location.href = '/login?unauthorized=true';
-          }
+          handleAuthFailure();
           return Promise.reject(refreshError);
         }
       } else {
-        // Max refresh attempts reached - clear tokens and redirect
+        // Max refresh attempts reached - clear tokens, notify app, and reject
         refreshAttempts = 0;
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        
-        // Redirect to login if not already there
-        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-          window.location.href = '/login?unauthorized=true';
-        }
+        handleAuthFailure();
         return Promise.reject(error);
       }
     }
@@ -160,8 +150,9 @@ export const conversationsApi = {
     await api.delete(`/conversations/${id}/leave`);
   },
 
-  listMessages: async (id: string, limit = 50) => {
+  listMessages: async (id: string, cursor?: string, limit = 50) => {
     const params = new URLSearchParams();
+    if (cursor) params.set('cursor', cursor);
     params.set('limit', String(limit));
     const response = await api.get(`/conversations/${id}/messages`, { params });
     return messagesListResponseSchema.parse(response.data);
@@ -203,6 +194,15 @@ export const clearAuthToken = () => {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
 };
+
+// Custom event for auth failure - dispatches when token refresh fails
+export const AUTH_AUTHENTICATION_FAILED_EVENT = 'auth:authentication-failed';
+
+// Handle auth failure - clears tokens and notifies app to redirect
+export function handleAuthFailure() {
+  clearAuthToken();
+  window.dispatchEvent(new CustomEvent(AUTH_AUTHENTICATION_FAILED_EVENT));
+}
 
 // Helper to get auth token
 export const getAuthToken = () => localStorage.getItem('accessToken');

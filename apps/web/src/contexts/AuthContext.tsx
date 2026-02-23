@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useCallback, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCurrentUser, useLogin, useRegister, useLogout } from '../hooks/useAuth';
-import { getAuthToken } from '../lib/api';
+import { getAuthToken, AUTH_AUTHENTICATION_FAILED_EVENT } from '../lib/api';
 import type { LoginInput, RegisterInput, UserResponse } from '@chat/shared/schemas/auth';
 
 interface AuthContextType {
@@ -15,10 +17,23 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: user, isLoading } = useCurrentUser();
   const loginMutation = useLogin();
   const registerMutation = useRegister();
   const logoutFn = useLogout();
+
+  // Listen for auth failure events (token refresh failed) and redirect to login
+  useEffect(() => {
+    const handleAuthFailure = () => {
+      queryClient.clear();
+      navigate('/login', { replace: true });
+    };
+
+    window.addEventListener(AUTH_AUTHENTICATION_FAILED_EVENT, handleAuthFailure);
+    return () => window.removeEventListener(AUTH_AUTHENTICATION_FAILED_EVENT, handleAuthFailure);
+  }, [navigate, queryClient]);
 
   // Check for token on mount to trigger initial fetch
   useEffect(() => {

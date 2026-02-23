@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { useCallback } from 'react';
-import { authApi, setAuthToken, clearAuthToken } from '../lib/api';
+import { useCallback, useEffect } from 'react';
+import { authApi, setAuthToken, clearAuthToken, handleAuthFailure } from '../lib/api';
 import type { LoginInput, RegisterInput, UserResponse, AuthResponse } from '@chat/shared/schemas/auth';
 import { useAuthContext } from '../contexts/AuthContext';
 
@@ -15,7 +15,7 @@ export function useCurrentUser() {
   // Only run query if token exists in localStorage
   const hasToken = !!localStorage.getItem('accessToken');
 
-  return useQuery({
+  const query = useQuery({
     queryKey: authKeys.me,
     queryFn: () => authApi.getMe().then((res) => res.data),
     retry: 0, // Don't retry on 401 - let interceptor handle it
@@ -23,6 +23,18 @@ export function useCurrentUser() {
     staleTime: 1000 * 60 * 5, // 5 minutes
     enabled: hasToken, // Only fetch if token exists
   });
+
+  // Handle 401 errors by clearing tokens and triggering redirect
+  useEffect(() => {
+    if (query.error) {
+      const axiosError = query.error as { response?: { status?: number } };
+      if (axiosError.response?.status === 401) {
+        handleAuthFailure();
+      }
+    }
+  }, [query.error]);
+
+  return query;
 }
 
 // Hook for login mutation

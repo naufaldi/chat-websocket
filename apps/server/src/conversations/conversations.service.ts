@@ -1,13 +1,20 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ConversationsRepository } from './conversations.repository';
 import { MessagesRepository } from '../messages/messages.repository';
-import type { CreateConversationInput } from '@chat/shared';
+import { UsersRepository } from '../users/users.repository';
+import type { CreateConversationInput, SendMessageResponse } from '@chat/shared';
+import { conversations } from '@chat/db';
+import { eq } from 'drizzle-orm';
+import { DRIZZLE } from '../database/database.service';
+import type { DrizzleDB } from '../database/database.types';
 
 @Injectable()
 export class ConversationsService {
   constructor(
     private readonly repository: ConversationsRepository,
     private readonly messagesRepository: MessagesRepository,
+    private readonly usersRepository: UsersRepository,
+    @Inject(DRIZZLE) private readonly db: DrizzleDB,
   ) {}
 
   async findAllByUser(
@@ -301,5 +308,106 @@ export class ConversationsService {
     await this.repository.leaveConversation(conversationId, userId);
 
     return { message: 'Left conversation successfully' };
+  }
+
+  async sendMessageHttp(
+    conversationId: string,
+    senderId: string,
+    data: {
+      content: string;
+      contentType: 'text';
+      clientMessageId: string;
+      replyToId?: string;
+    },
+  ): Promise<SendMessageResponse> {
+    const conversation = await this.repository.findById(conversationId);
+    if (!conversation) {
+      throw new NotFoundException({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Conversation not found',
+          retryable: false,
+          traceId: crypto.randomUUID(),
+        },
+      });
+    }
+
+    const isParticipant = await this.repository.isUserParticipant(conversationId, senderId);
+    if (!isParticipant) {
+      throw new ForbiddenException({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'You are not a participant of this conversation',
+          retryable: false,
+          traceId: crypto.randomUUID(),
+        },
+      });
+    }
+
+    const existing = await this.messagesRepository.findByClientMessageId(data.clientMessageId);
+    if (existing) {
+      const sender = await this.usersRepository.findById(existing.senderId);
+      return {
+        message: {
+          id: existing.id,
+          conversationId: existing.conversationId,
+          senderId: existing.senderId,
+          sender: {
+            id: sender?.id ?? existing.senderId,
+            username: sender?.username ?? '',
+            displayName: sender?.displayName ?? null,
+            avatarUrl: sender?.avatarUrl ?? null,
+          },
+          content: existing.content,
+          contentType: existing.contentType,
+          clientMessageId: existing.clientMessageId,
+          status: existing.status,
+          replyToId: existing.replyToId,
+          createdAt: existing.createdAt.toISOString(),
+          updatedAt: existing.updatedAt.toISOString(),
+          deletedAt: existing.deletedAt?.toISOString() ?? null,
+        },
+        existing: true,
+      };
+    }
+
+    const message = await this.messagesRepository.create({
+      conversationId,
+      senderId,
+      content: data.content,
+      contentType: data.contentType,
+      clientMessageId: data.clientMessageId,
+      replyToId: data.replyToId,
+    });
+
+    await this.db
+      .update(conversations)
+      .set({ updatedAt: new Date() })
+      .where(eq(conversations.id, conversationId));
+
+    const sender = await this.usersRepository.findById(senderId);
+
+    return {
+      message: {
+        id: message.id,
+        conversationId: message.conversationId,
+        senderId: message.senderId,
+        sender: {
+          id: sender?.id ?? senderId,
+          username: sender?.username ?? '',
+          displayName: sender?.displayName ?? null,
+          avatarUrl: sender?.avatarUrl ?? null,
+        },
+        content: message.content,
+        contentType: message.contentType,
+        clientMessageId: message.clientMessageId,
+        status: message.status,
+        replyToId: message.replyToId,
+        createdAt: message.createdAt.toISOString(),
+        updatedAt: message.updatedAt.toISOString(),
+        deletedAt: message.deletedAt?.toISOString() ?? null,
+      },
+      existing: false,
+    };
   }
 }

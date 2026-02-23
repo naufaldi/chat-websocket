@@ -31,6 +31,34 @@ export const messagesListResponseSchema = z.object({
   messages: z.array(messageSchema),
 });
 
+export const messageResponseSchema = z.object({
+  id: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  senderId: z.string().uuid(),
+  sender: z.object({
+    id: z.string().uuid(),
+    username: z.string(),
+    displayName: z.string().nullable(),
+    avatarUrl: z.string().nullable(),
+  }),
+  content: z.string(),
+  contentType: contentTypeSchema,
+  clientMessageId: z.string().uuid().nullable(),
+  status: messageStatusSchema,
+  replyToId: z.string().uuid().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  deletedAt: z.string().datetime().nullable(),
+});
+
+export const sendMessageResponseSchema = z.object({
+  message: messageResponseSchema,
+  existing: z.boolean(),
+});
+
+export type MessageResponse = z.infer<typeof messageResponseSchema>;
+export type SendMessageResponse = z.infer<typeof sendMessageResponseSchema>;
+
 export type Message = z.infer<typeof messageSchema>;
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 export type MessageStatus = z.infer<typeof messageStatusSchema>;
