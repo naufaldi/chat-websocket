@@ -1,6 +1,7 @@
 # AGENTS.md - Frontend Developer Guide
 
 > See root `AGENTS.md` for monorepo overview and superpowers skills.
+> **CRITICAL**: All frontend code must follow [Functional Programming Principles](../../AGENTS.md#functional-programming-principles-must-follow)
 
 ## Domain Skills
 
@@ -55,111 +56,56 @@ Import using: `import { Button } from '@/components/Button';`
 
 ### Components
 
-```typescript
-// ✅ Good: Functional component with explicit props
-interface ButtonProps {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: 'primary' | 'secondary';
-}
-
-export function Button({ children, onClick, variant = 'primary' }: ButtonProps) {
-  return (
-    <button className={cn('btn', variant === 'primary' && 'btn-primary')} onClick={onClick}>
-      {children}
-    </button>
-  );
-}
-```
+- Functional components only (no class components)
+- Props interfaces explicit and readonly
+- Render is pure function of props and state
+- Use `useMemo` for expensive computations
+- Compose small, single-responsibility components
 
 ### TanStack Query
 
-```typescript
-// ✅ Good: Custom hook for data fetching
-function useMessages(conversationId: string) {
-  return useQuery({
-    queryKey: ['messages', conversationId],
-    queryFn: () => fetchMessages(conversationId),
-    staleTime: 1000 * 60, // 1 minute
-  });
-}
-
-// ✅ Good: Mutations with optimistic updates
-function useSendMessage() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: sendMessage,
-    onMutate: async (newMessage) => {
-      await queryClient.cancelQueries({ queryKey: ['messages', newMessage.conversationId] });
-      const previous = queryClient.getQueryData(['messages', newMessage.conversationId]);
-      
-      queryClient.setQueryData(['messages', newMessage.conversationId], (old: Message[]) => [
-        ...old,
-        { ...newMessage, status: 'sending' },
-      ]);
-      
-      return { previous };
-    },
-    onError: (err, newMessage, context) => {
-      queryClient.setQueryData(['messages', newMessage.conversationId], context?.previous);
-    },
-  });
-}
-```
+- Encapsulate data logic in custom hooks
+- Use `select` for data transformations
+- Immutable optimistic updates with spread operator
+- Rollback on error with context
+- Invalidate queries after mutations
 
 ### WebSocket
 
-```typescript
-// ✅ Good: Centralized socket instance
-import { io, Socket } from 'socket.io-client';
-
-let socket: Socket | null = null;
-
-export function getSocket(): Socket {
-  if (!socket) {
-    const token = localStorage.getItem('accessToken');
-    socket = io(import.meta.env.VITE_WS_URL || 'http://localhost:3000/chat', {
-      auth: { token },
-      transports: ['websocket'],
-      reconnection: true,
-    });
-  }
-  return socket;
-}
-```
+- Centralized socket instance in `lib/socket.ts`
+- Reconnection enabled by default
+- Auth token via `localStorage`
 
 ### Tailwind CSS 4.x
 
-```css
-/* index.css - use @import */
-@import "tailwindcss";
+- Use `@import "tailwindcss"` in CSS
+- Use `cn()` helper for conditional classes
 
-/* Component classes using tailwind-merge */
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+### React State
 
-function cn(...inputs: (string | boolean | undefined)[]) {
-  return twMerge(clsx(inputs));
-}
+- Immutable updates only (`[...prev, item]`)
+- Use `useReducer` for complex state logic
+- No direct mutations in state setters
+- Use `useMemo` for derived state
 
-/* Usage */
-<div className={cn('base-class', isActive && 'active', variant === 'primary' && 'bg-blue-500')} />
-```
+### Forms
+
+- Zod schemas with React Hook Form
+- `zodResolver` for validation
+- Infer form types from schemas
 
 ### Zod Validation
 
-```typescript
-// ✅ Good: Define schemas for runtime validation
-import { z } from 'zod';
+- Define schemas in `packages/shared`
+- Infer TypeScript types from schemas
+- Parse unknown data at system boundaries with `safeParse`
 
-export const sendMessageSchema = z.object({
-  content: z.string().min(1).max(4000),
-  clientMessageId: z.string().uuid(),
-});
+### Custom Hooks
 
-export type SendMessageInput = z.infer<typeof sendMessageSchema>;
-```
+- Encapsulate side effects (localStorage, sockets)
+- Return pure interfaces
+- Compose other hooks
+- Isolate impure operations
 
 ## File Structure
 

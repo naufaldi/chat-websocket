@@ -4,31 +4,31 @@
 > **Tech Stack:** NestJS 11.x + Drizzle 0.45.x + PostgreSQL + Redis + Socket.io 4.x + Bun Workspaces  
 > **Frontend:** React 19.x + Vite 7.x + TanStack Query 5.x + Tailwind 4.x  
 > **Documentation:** Swagger/OpenAPI 3.0  
-> **Last Updated:** 2026-02-17
+> **Last Updated:** 2026-02-23 (Status updated after council scan)
 
 ---
 
 ## 📊 Progress Overview
 
-| Phase | Task | Status | Est. Days | Swagger |
-|-------|------|--------|-----------|---------|
+| Phase | Task | Status | Est. Days | Swagger | Actual Completion |
+|-------|------|--------|-----------|---------|-------------------|
 | 0 | Foundation | ✅ Complete | 3 | - |
 | 1 | Authentication System | ✅ Complete | 4 | ✅ |
 | 2 | Conversations API | ✅ Complete | 3 | ✅ |
 | 3 | WebSocket Gateway | ✅ Complete | 4 | - |
-| 4 | Message System | ⏳ Pending | 5 | ✅ |
-| 5 | Read Receipts | ✅ Complete | 4 | ✅ |
-| 6 | Presence System | ✅ Complete | 3 | ✅ |
-| 7 | Deployment & Observability | ✅ Complete | 3 | ✅ |
-| 8 | User Search API | ⏳ Pending | 2 | - |
-| 9 | Server-Side Rate Limiting | ⏳ Pending | 2 | - |
-| 10 | Message Deduplication | ⏳ Pending | 2 | - |
-| 11 | Home Dashboard Page | ⏳ Pending | 3 | - |
-| 12 | Settings & Profile Page | ⏳ Pending | 3 | - |
+| 4 | Message System | 🔄 In Progress | 5 | ✅ | ~70% |
+| 5 | Read Receipts | 🔄 In Progress | 4 | ✅ | ~60% |
+| 6 | Presence System | 🔄 In Progress | 3 | ✅ | ~60% |
+| 7 | Deployment & Observability | 🔄 In Progress | 3 | ✅ | ~50% |
+| 8 | User Search API | 🔄 In Progress | 2 | - | ~85% |
+| 9 | Server-Side Rate Limiting | 🔄 In Progress | 2 | - | ~60% |
+| 10 | Message Deduplication | 🔄 In Progress | 2 | - | ~90% |
+| 11 | Home Dashboard Page | 🔄 In Progress | 3 | - | ~50% |
+| 12 | Settings & Profile Page | 🔄 In Progress | 3 | - | ~40% |
 
-**Total:** 29 days (~6 weeks) | **Completed:** 7/13 tasks | **In Progress:** 0/13 tasks
+**Total:** 29 days (~6 weeks) | **Completed:** 4/13 tasks | **In Progress:** 9/13 tasks | **Actual Overall:** ~65%
 
-> *Note: Auth system is now 100% complete. Rate limiting implemented (5 attempts/15min).
+> *Note: See [Reality Check](#-reality-check-codebase-audit) section below for detailed gap analysis. Tasks 5, 6, 7 previously marked complete but have critical missing pieces.*
 
 ---
 
@@ -1505,6 +1505,213 @@ For each task, verify:
 - Swagger documentation must be kept in sync with implementation
 - All tasks include both happy path and error handling
 - Performance targets are mandatory, not optional
+
+---
+
+## 🔍 Reality Check: Codebase Audit
+
+> **Last Audited:** 2026-02-23  
+> **Auditor:** Council subagent scan (10 parallel explorers)  
+> **Method:** File-by-file verification against implementation spec
+
+This section documents the actual state of implementation versus the documented specification. Several tasks previously marked "Complete" were found to have critical gaps.
+
+---
+
+### ⚠️ Tasks Incorrectly Marked Complete
+
+#### TASK-005: Read Receipts (~60% Complete)
+**Documented Status:** ✅ Complete  
+**Actual Status:** 🔄 In Progress
+
+**Critical Gaps:**
+1. **Group chat batching not implemented** - All receipts (1:1 and groups) write directly to DB. Missing:
+   - Redis counter `read_count:{conversation_id}:{message_id}`
+   - Redis queue `read_receipts:pending`
+   - Batch worker with `@Interval(10000)`
+2. **No frontend components:**
+   - `ReadReceipt` (double checkmark) - NOT FOUND
+   - `ReadReceiptDetails` (popup) - NOT FOUND
+   - `ReadReceiptCount` ("Read by N") - NOT FOUND
+3. **No frontend hooks:**
+   - `useReadReceipts(messageId)` - NOT FOUND
+   - `useMarkAsRead(conversationId)` - NOT FOUND
+4. **Privacy setting missing:** `read_receipts_enabled` not in users table (only `presence_enabled` exists)
+
+**What Works:**
+- Database schema (read_receipts table, conversation_participants tracking)
+- WebSocket events (receipt:read, receipt:updated, receipt:count)
+- REST endpoints (GET /api/messages/:id/receipts, POST /api/messages/:id/read)
+- 1:1 chat instant receipts
+
+---
+
+#### TASK-006: Presence System (~60% Complete)
+**Documented Status:** ✅ Complete  
+**Actual Status:** 🔄 In Progress
+
+**Critical Gaps:**
+1. **No keyspace notifications** - Redis expiry detection for offline broadcast not implemented
+2. **No multi-device support** - Redis value only has `{status, lastSeen}`, missing `devices: [{deviceId, type, connectedAt}]` array
+3. **No frontend components:**
+   - `PresenceIndicator` (green/yellow/gray dot) - NOT FOUND
+   - `PresenceText` ("Online", "Last seen 5m ago") - NOT FOUND
+   - Only hardcoded green dot in ChatHeader.tsx exists
+4. **No frontend hooks:**
+   - `usePresence(userId)` - NOT FOUND
+   - `usePresenceHeartbeat()` - NOT FOUND (heartbeat managed in ChatSocketService, not React hook)
+5. **Duplicate services** - Two PresenceService implementations with confusing naming:
+   - `apps/server/src/presence/presence.service.ts` (REST, no Redis)
+   - `apps/server/src/chat/presence.service.ts` (WebSocket, with Redis)
+
+**What Works:**
+- Database schema (lastSeenAt, presenceEnabled, presenceSharing)
+- WebSocket events (presence:heartbeat, presence:update)
+- Heartbeat mechanism (15s client interval, 30s server TTL)
+- REST endpoint (GET /api/users/:id/presence)
+- Privacy settings enforced for 'nobody' option
+
+---
+
+#### TASK-007: Deployment & Observability (~50% Complete)
+**Documented Status:** ✅ Complete  
+**Actual Status:** 🔄 In Progress
+
+**Critical Gaps:**
+1. **No `/metrics` endpoint** - Prometheus expects to scrape at `/metrics` but endpoint doesn't exist
+2. **No Prometheus metrics library** - `prom-client` or `@nestjs/prometheus` not in dependencies
+3. **No metric implementations:**
+   - Message latency histogram - MISSING
+   - Error rate gauge - MISSING
+   - Active connections gauge - MISSING
+4. **Pino not configured** - Dependency present (v10.3.1) but NestJS Logger used instead; no JSON formatting
+5. **No Grafana provisioning** - Directory referenced in docker-compose.yml but doesn't exist
+6. **No graceful shutdown** - No `enableShutdownHooks()`, no SIGTERM/SIGINT handlers
+
+**What Works:**
+- Docker Compose configuration (docker-compose.yml)
+- Dockerfile for NestJS app (multi-stage, Bun runtime)
+- Health endpoints (/health/live, /health/ready)
+- Nginx configuration (reverse proxy, WebSocket support)
+- Prometheus configuration (prometheus.yml)
+
+---
+
+### ⏳ Pending Tasks - Detailed Gap Analysis
+
+#### TASK-004: Message System (~70% Complete)
+
+**Critical Gaps:**
+1. **Cursor pagination not implemented** - Repository has `_cursor` parameter but no logic:
+   - `findByConversation()` in repository has unused `_cursor` param
+   - Controller doesn't accept `cursor` query parameter
+   - No cursor encoding/decoding logic
+   - Frontend `useMessages` hook expects cursor but backend ignores it
+2. **Missing transaction wrapping** - Write-through doesn't wrap INSERT + UPDATE conversation in transaction
+3. **Missing components/hooks:**
+   - `ChatWindow` component - NOT FOUND (ChatPage serves this role)
+   - `useOptimisticMessages` hook - NOT FOUND (optimistic updates in `useChatSocket` instead)
+
+**What Works:**
+- REST endpoints (GET, POST, DELETE messages)
+- WebSocket events (message:send, message:sent, message:received, message:error)
+- Soft delete with deleted_at
+- Rate limiting (30 messages/min)
+- Swagger documentation
+- Server-side deduplication with Redis
+- Frontend components: MessageList, MessageBubble, MessageInput, TypingIndicator
+
+---
+
+#### TASK-008: User Search API (~85% Complete)
+
+**Minor Gaps:**
+1. **No rate limiting** on search endpoint (no `@UseGuards(ThrottlerGuard)`)
+2. **No `UsersService.search()` method** - Controller calls repository directly
+
+**What Works:**
+- GET `/users/search?q={query}&limit=20` endpoint
+- `UsersRepository.searchPublicUsers()` with username/display name search
+- `useUsersSearch` hook with debouncing (300ms)
+- Minimum 3 character validation
+- Tests for controller and hook
+
+---
+
+#### TASK-009: Server-Side Rate Limiting (~60% Complete)
+
+**Critical Gaps:**
+1. **No Redis-based distributed rate limiting** - Uses in-memory storage only
+2. **No configurable limits per endpoint** - Hardcoded limits in guard
+3. **Rate limiting not applied to:**
+   - User search endpoint
+4. **WebSocket rate limiting uses in-memory Map** - Should use Redis for cross-server consistency
+
+**What Works:**
+- `ThrottlerModule` configured
+- `ThrottlerWithHeadersGuard` with custom headers (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset)
+- `Retry-After` header on 429 responses
+- Auth endpoints protected (5 attempts/15min)
+- Frontend rate limit error extraction
+
+---
+
+#### TASK-010: Message Deduplication (~90% Complete)
+
+**Minor Gaps:**
+1. **Frontend retry logic needs verification** - Retry with same `clientMessageId` partially exists but needs explicit retry mechanism
+2. **Clear pending on confirmation** - Status updates exist but explicit cleanup unclear
+
+**What Works:**
+- `clientMessageId` tracking in Redis (5-min TTL)
+- Duplicate checking via `reserveDedupKey()` (Redis SETNX)
+- Fallback to in-memory Map if Redis unavailable
+- `findByClientMessageId` repository method
+- Frontend `clientMessageId` generation in `useChatSocket`
+
+---
+
+#### TASK-011: Home Dashboard Page (~50% Complete)
+
+**Critical Gaps:**
+1. **No `/home` or `/dashboard` route** - Root `/` goes directly to ChatPage
+2. **No dedicated dashboard page component**
+3. **No online contacts sidebar**
+
+**What Works:**
+- Sidebar with conversations exists (in ChatPage)
+- Quick action buttons (create chat)
+- Create conversation modal (CreateChatModal)
+- Conversation list functionality
+
+---
+
+#### TASK-012: Settings & Profile Page (~40% Complete)
+
+**Critical Gaps:**
+1. **No PATCH `/users/me` endpoint** - Not found in users.controller.ts
+2. **No PATCH `/users/me/privacy` endpoint** - Not found
+3. **Settings UI not connected to backend** - Privacy toggle only manages local state
+
+**What Works:**
+- `/settings` route exists
+- Profile display form (read-only)
+- Privacy settings toggle UI (unconnected)
+- Logout button functional
+- `updateProfileSchema` in shared schemas
+
+---
+
+### 📊 Summary by Component Layer
+
+| Layer | Status | Key Missing Pieces |
+|-------|--------|-------------------|
+| **Backend API** | ~85% | Message cursor pagination, profile/privacy PATCH endpoints, metrics endpoint |
+| **WebSocket** | ~90% | Redis-based rate limiting storage |
+| **Database** | ~95% | `read_receipts_enabled` field in users table |
+| **Frontend Components** | ~50% | ReadReceipt, PresenceIndicator, PresenceText |
+| **Frontend Hooks** | ~60% | useReadReceipts, useMarkAsRead, usePresence |
+| **DevOps/Observability** | ~50% | Metrics endpoint, Pino logging, graceful shutdown |
 
 ---
 

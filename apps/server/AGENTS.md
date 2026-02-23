@@ -1,6 +1,7 @@
 # AGENTS.md - Backend Developer Guide
 
 > See root `AGENTS.md` for monorepo overview and superpowers skills.
+> **CRITICAL**: All backend code must follow [Functional Programming Principles](../../AGENTS.md#functional-programming-principles-must-follow)
 
 ## Domain Skills
 
@@ -108,26 +109,12 @@ export class AuthController {
 }
 ```
 
-## DTOs with class-validator
+## DTOs - Zod Schema First (Preferred)
 
-```typescript
-// ✅ Good: DTO with validation
-import { IsEmail, IsString, MinLength, MaxLength } from 'class-validator';
-
-export class RegisterDto {
-  @IsEmail()
-  email: string;
-
-  @IsString()
-  @MinLength(3)
-  @MaxLength(50)
-  username: string;
-
-  @IsString()
-  @MinLength(8)
-  password: string;
-}
-```
+- Use Zod schemas for runtime validation (preferred over class-validator)
+- Infer TypeScript types from schemas with `z.infer<typeof schema>`
+- Use `nestjs-zod` for ZodValidationPipe integration
+- class-validator is legacy support only
 
 ## Database (Drizzle)
 
@@ -156,24 +143,27 @@ export class MessageRepository {
 }
 ```
 
-## Error Handling
+## Backend Functional Patterns
 
-```typescript
-// ✅ Good: Use NestJS exceptions
-throw new BadRequestException('Invalid email');
-throw new UnauthorizedException('Invalid credentials');
-throw new NotFoundException('User not found');
-throw new ConflictException('Email already exists');
+### Service Layer
 
-// Custom exception
-@Injectable()
-export class WsExceptionFilter implements ExceptionFilter {
-  catch(exception: unknown, host: SwitchToWs) {
-    const client = host.getClient();
-    client.emit('error', { message: 'Something went wrong' });
-  }
-}
-```
+- Separate pure business logic from side effects
+- Validation must use Zod schemas with `safeParse`
+- Return `Result<T, E>` types instead of throwing for expected errors
+- Side effects (DB, events, logging) at system boundaries only
+
+### Repository Pattern
+
+- Build queries immutably with Drizzle operators
+- Compose query chains (where, orderBy, limit)
+- Use `Result<T, E>` pattern for findById operations
+- Never throw for expected "not found" cases
+
+### Error Handling
+
+- Use Result pattern for expected errors (validation, not found)
+- NestJS exceptions (`BadRequestException`, etc.) for HTTP layer only
+- WebSocket errors via event emitters, not exceptions
 
 ## File Structure
 

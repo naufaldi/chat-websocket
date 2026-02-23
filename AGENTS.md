@@ -151,6 +151,33 @@ Order: external → internal → relative
 - Use repository pattern
 - Avoid raw SQL unless necessary
 
+---
+
+## Functional Programming Principles (MUST FOLLOW)
+
+**All code must follow functional programming principles. Never use imperative patterns when declarative alternatives exist.**
+
+### Core Principles
+
+| Principle | Imperative (Avoid) | Functional (Use) |
+|-----------|-------------------|-------------------|
+| **Validation** | Manual if-else chains | Zod schema-first |
+| **Data Transform** | `for` loops with mutations | `map`, `filter`, `reduce`, `flatMap` |
+| **State Changes** | Mutable variables, reassignments | Immutable updates, spread operators |
+| **Error Handling** | `throw` / `try-catch` | Result types, `safeParse`, early returns |
+| **Conditionals** | Deep if-else nesting | Ternary operators, pattern matching |
+| **Async Flow** | Sequential `await` in loops | `Promise.all`, `Promise.allSettled` |
+
+### Enforcement
+
+**Review Checklist for All Code:**
+- [ ] No manual validation with if-else chains (use Zod)
+- [ ] No `for` loops with mutations (use array methods)
+- [ ] No throwing for expected errors (use Result types)
+- [ ] No reassignment of variables (use const + spread)
+- [ ] No deep nesting (use early returns, composition)
+- [ ] All functions are pure unless explicitly at system boundary
+
 ### Git Commits
 
 Format: `<type>(<scope>): <description>`
