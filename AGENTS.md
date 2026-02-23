@@ -13,6 +13,22 @@ This is a **Bun + Turborepo monorepo** with NestJS backend and Vite/React fronte
 
 ---
 
+## Project State (Living Document)
+
+**CRITICAL:** Always check `docs/TASKS.md` before starting any work.
+
+- It contains the current state of all tasks (complete, in-progress, pending)
+- It has the **Reality Check** section with actual implementation status vs documented status
+- It identifies gaps between what's marked complete and what's actually implemented
+- **Update it as you complete work** - this is a living document
+
+**Quick Status Overview:**
+- 4/13 tasks actually complete (Foundation, Auth, Conversations, WebSocket Gateway)
+- 9/13 tasks in progress with varying completion percentages
+- See TASKS.md section "Reality Check: Codebase Audit" for detailed gap analysis
+
+---
+
 ## Superpowers Skills (MUST USE)
 
 **CRITICAL**: Before ANY task, check available skills using `Skill` tool. Even 1% chance a skill applies = use it.

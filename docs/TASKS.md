@@ -1,10 +1,12 @@
 # Chat System Development Tasks
 
+> **LIVING DOCUMENT:** This file tracks project state and is updated as work progresses.  
+> **Check this first** before any task to understand current completion status.  
 > **Project:** Real-time Chat System (Three-Second Problem)  
 > **Tech Stack:** NestJS 11.x + Drizzle 0.45.x + PostgreSQL + Redis + Socket.io 4.x + Bun Workspaces  
 > **Frontend:** React 19.x + Vite 7.x + TanStack Query 5.x + Tailwind 4.x  
 > **Documentation:** Swagger/OpenAPI 3.0  
-> **Last Updated:** 2026-02-23 (Status updated after council scan)
+> **Last Updated:** 2026-02-23 (Task 005 in progress, AGENTS.md living doc reference added)
 
 ---
 
@@ -17,7 +19,7 @@
 | 2 | Conversations API | ✅ Complete | 3 | ✅ |
 | 3 | WebSocket Gateway | ✅ Complete | 4 | - |
 | 4 | Message System | 🔄 In Progress | 5 | ✅ | ~70% |
-| 5 | Read Receipts | 🔄 In Progress | 4 | ✅ | ~60% |
+| 5 | Read Receipts | 🔄 In Progress | 4 | ✅ | ~60% | See [TASK-005 details](#-task-005-read-receipts) |
 | 6 | Presence System | 🔄 In Progress | 3 | ✅ | ~60% |
 | 7 | Deployment & Observability | 🔄 In Progress | 3 | ✅ | ~50% |
 | 8 | User Search API | 🔄 In Progress | 2 | - | ~85% |
@@ -741,13 +743,30 @@ curl "http://localhost:3000/api/conversations/{id}/messages?limit=20" \
 
 ---
 
-## ✅ TASK-005: Read Receipts
+## 🔄 TASK-005: Read Receipts
 
-**Status:** ✅ **COMPLETE**
+**Status:** 🔄 **IN PROGRESS (~60% Complete)**
 **Priority:** 🔴 Critical | **Est:** 4 days | **Dependencies:** TASK-004
 
 ### Overview
 Read receipt system with hybrid architecture (instant for 1:1, batched for groups).
+
+### Current State Summary
+**What's Working:**
+- Database schema (read_receipts table, conversation_participants.last_read_message_id)
+- WebSocket events (receipt:read, receipt:updated, receipt:count)
+- REST endpoints (GET /api/messages/:id/receipts, POST /api/messages/:id/read)
+- 1:1 chat instant receipts (immediate DB write)
+- Backend service implemented
+
+**Critical Gaps:**
+- [ ] **Group chat batching not implemented** - All receipts write directly to DB
+  - Missing: Redis counter `read_count:{conversation_id}:{message_id}`
+  - Missing: Redis queue `read_receipts:pending`
+  - Missing: Batch worker with `@Interval(10000)`
+- [ ] **No frontend components:** ReadReceipt, ReadReceiptDetails, ReadReceiptCount
+- [ ] **No frontend hooks:** useReadReceipts, useMarkAsRead
+- [ ] **Privacy setting missing:** `read_receipts_enabled` not in users table
 
 ### Backend Scope
 ```typescript
@@ -880,13 +899,13 @@ curl http://localhost:3000/api/messages/{id}/receipts \
 
 ### Definition of Done
 - [x] Read receipts working for 1:1 (instant DB write + real-time notification)
-- [x] Batched receipts working for groups (with read count)
+- [ ] Batched receipts working for groups (with read count) - **PENDING: Redis + batch worker needed**
 - [x] Database schema implemented (read_receipts table, lastReadMessageId/lastReadAt)
 - [x] WebSocket events: receipt:read, receipt:updated, receipt:count
 - [x] REST endpoint: GET /api/messages/:id/receipts
 - [x] REST endpoint: POST /api/messages/:id/read
 - [x] Backend service implemented
-- [x] FE indicators working (via WebSocket)
+- [ ] FE indicators working (via WebSocket) - **PENDING: Components not created**
 - [x] Swagger docs complete (schemas defined)
 
 ---
