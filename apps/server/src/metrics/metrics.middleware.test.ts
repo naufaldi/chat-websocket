@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MetricsMiddleware } from './metrics.middleware';
 import { MetricsService } from './metrics.service';
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 
 describe('MetricsMiddleware', () => {
   let middleware: MetricsMiddleware;

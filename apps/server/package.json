@@ -51,6 +51,7 @@
     "@nestjs/cli": "^11.0.16",
     "@types/argon2": "^0.15.4",
     "@types/bcrypt": "^5.0.2",
+    "@types/express": "^5.0.0",
     "@types/node": "^20.11.0",
     "@types/passport-jwt": "^4.0.1",
     "@typescript-eslint/eslint-plugin": "^8.55.0",

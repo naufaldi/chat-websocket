@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MetricsController } from './metrics.controller';
 import { MetricsService } from './metrics.service';
-import { Response } from 'express';
+import type { Response } from 'express';
 
 describe('MetricsController', () => {
   let controller: MetricsController;
