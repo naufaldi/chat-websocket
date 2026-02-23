@@ -36,6 +36,7 @@ import {
 import { TokenBlacklistService } from '../auth/token-blacklist.service';
 import { ChatService } from './chat.service';
 import { PresenceService } from './presence.service';
+import { ReadReceiptsService } from '../read-receipts/read-receipts.service';
 
 interface JwtPayload {
   sub: string;

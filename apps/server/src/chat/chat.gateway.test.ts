@@ -7,6 +7,7 @@ import { ChatGateway } from './chat.gateway';
 import type { Message, SendMessageInput } from '@chat/shared';
 import { serverToClientEventSchemas } from '@chat/shared';
 import { PresenceService } from './presence.service';
+import { ReadReceiptsService } from '../read-receipts/read-receipts.service';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 const CONVERSATION_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -25,6 +26,16 @@ function createPresenceServiceMock() {
   return {
     refreshHeartbeat: vi.fn(),
     scheduleOffline: vi.fn(),
+  };
+}
+
+function createReadReceiptsServiceMock(): {
+  markAsRead: ReturnType<typeof vi.fn>;
+  getReceiptsForMessage: ReturnType<typeof vi.fn>;
+} {
+  return {
+    markAsRead: vi.fn(),
+    getReceiptsForMessage: vi.fn(),
   };
 }
 
@@ -48,6 +59,7 @@ describe('ChatGateway', () => {
   let tokenBlacklistService: Pick<TokenBlacklistService, 'isBlacklisted'>;
   let chatService: ReturnType<typeof createChatServiceMock>;
   let presenceService: ReturnType<typeof createPresenceServiceMock>;
+  let readReceiptsService: ReturnType<typeof createReadReceiptsServiceMock>;
   let gateway: ChatGateway;
   let roomEmit: ReturnType<typeof vi.fn>;
 
@@ -63,12 +75,14 @@ describe('ChatGateway', () => {
     };
     chatService = createChatServiceMock();
     presenceService = createPresenceServiceMock();
+    readReceiptsService = createReadReceiptsServiceMock();
     gateway = new ChatGateway(
       jwtService as JwtService,
       configService as ConfigService,
       tokenBlacklistService as TokenBlacklistService,
       chatService as never,
       presenceService as unknown as PresenceService,
+      readReceiptsService as unknown as ReadReceiptsService,
     );
     roomEmit = vi.fn();
     gateway.server = {
