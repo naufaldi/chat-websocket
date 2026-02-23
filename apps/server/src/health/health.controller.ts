@@ -1,4 +1,5 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
 import { DatabaseService } from '../database/database.service';
 import { ConfigService } from '@nestjs/config';
 import { createClient } from 'redis';
@@ -21,6 +22,8 @@ interface ReadyResponse {
 }
 
 @Controller('health')
+@SkipThrottle() // Health checks should not be rate limited
+@UseGuards(ThrottlerGuard)
 export class HealthController {
   constructor(
     private readonly databaseService: DatabaseService,
@@ -62,7 +65,7 @@ export class HealthController {
       checks.redis = 'error';
     }
 
-    const status: ReadyResponse['status'] = 
+    const status: ReadyResponse['status'] =
       checks.database === 'ok' && checks.redis === 'ok' ? 'ready' : 'not_ready';
 
     return {

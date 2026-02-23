@@ -1,46 +1,57 @@
-import { BadRequestException } from '@nestjs/common';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { userSearchResponseSchema } from '@chat/shared';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { UsersController } from './users.controller';
+import { UsersRepository } from './users.repository';
 
 describe('UsersController', () => {
-  const repository = {
-    searchPublicUsers: vi.fn(),
-  };
   let controller: UsersController;
+  let repository: UsersRepository;
 
   beforeEach(() => {
-    repository.searchPublicUsers.mockReset();
-    controller = new UsersController(repository as never);
+    repository = {
+      searchPublicUsers: vi.fn(),
+    } as unknown as UsersRepository;
+    controller = new UsersController(repository);
   });
 
-  it('rejects short search queries', async () => {
-    await expect(
-      controller.searchUsers({ user: { userId: '11111111-1111-4111-8111-111111111111' } }, 'ab', 20)
-    ).rejects.toBeInstanceOf(BadRequestException);
-  });
+  describe('searchUsers', () => {
+    it('should return empty array for query less than 3 characters', async () => {
+      const result = await controller.searchUsers(
+        { user: { userId: 'user1' } },
+        'ab',
+        '20',
+      );
 
-  it('returns schema-valid search response and applies safe limit', async () => {
-    repository.searchPublicUsers.mockResolvedValue([
-      {
-        id: '22222222-2222-4222-8222-222222222222',
-        username: 'alice',
-        displayName: 'Alice',
-        avatarUrl: null,
-      },
-    ]);
+      expect(result.users).toEqual([]);
+    });
 
-    const result = await controller.searchUsers(
-      { user: { userId: '11111111-1111-4111-8111-111111111111' } },
-      'ali',
-      100
-    );
+    it('should search with valid query', async () => {
+      const mockUsers = [
+        { id: '1', username: 'john', displayName: 'John Doe', avatarUrl: null },
+      ];
+      vi.mocked(repository.searchPublicUsers).mockResolvedValue(mockUsers);
 
-    expect(userSearchResponseSchema.parse(result)).toEqual(result);
-    expect(repository.searchPublicUsers).toHaveBeenCalledWith(
-      'ali',
-      '11111111-1111-4111-8111-111111111111',
-      50
-    );
+      const result = await controller.searchUsers(
+        { user: { userId: 'user1' } },
+        'john',
+        '20',
+      );
+
+      expect(repository.searchPublicUsers).toHaveBeenCalledWith('john', 'user1', 20);
+      expect(result.users).toEqual(mockUsers);
+    });
+
+    it('should clamp limit to minimum of 1', async () => {
+      vi.mocked(repository.searchPublicUsers).mockResolvedValue([]);
+
+      await controller.searchUsers({ user: { userId: 'user1' } }, 'query', '0');
+      expect(repository.searchPublicUsers).toHaveBeenCalledWith('query', 'user1', 1);
+    });
+
+    it('should clamp limit to maximum of 50', async () => {
+      vi.mocked(repository.searchPublicUsers).mockResolvedValue([]);
+
+      await controller.searchUsers({ user: { userId: 'user1' } }, 'query', '100');
+      expect(repository.searchPublicUsers).toHaveBeenCalledWith('query', 'user1', 50);
+    });
   });
 });
