@@ -3,6 +3,7 @@ import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { HomePage } from './pages/HomePage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { Loader2 } from 'lucide-react';
 import { ChatPage } from './pages/ChatPage';
@@ -33,6 +34,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ChatPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/home"
+        element={
+          <ProtectedRoute>
+            <HomePage />
           </ProtectedRoute>
         }
       />
