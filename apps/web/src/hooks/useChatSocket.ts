@@ -182,7 +182,8 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
 
   const sendMessage = useCallback(
     (content: string) => {
-      if (!conversationId || !enabled) {
+      if (!conversationId) {
+        console.error('[useChatSocket] Cannot send message: no conversation selected');
         return;
       }
 
@@ -193,6 +194,9 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
 
       const now = new Date().toISOString();
       const clientMessageId = buildClientMessageId();
+
+      // If socket is not connected, create message with error status so user sees feedback
+      const isConnected = enabled && service.getStatus() === 'connected';
       const optimisticMessage: Message = {
         id: clientMessageId,
         conversationId,
@@ -200,7 +204,7 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
         content: trimmed,
         contentType: 'text',
         clientMessageId,
-        status: 'sending',
+        status: isConnected ? 'sending' : 'error',
         replyToId: null,
         createdAt: now,
         updatedAt: now,
@@ -209,13 +213,19 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
 
       setMessages((prev) => [...prev, optimisticMessage]);
 
+      if (!isConnected) {
+        console.error('[useChatSocket] Cannot send message: socket not connected');
+        return;
+      }
+
       try {
         service.sendMessage({
           conversationId,
           content: trimmed,
           clientMessageId,
         });
-      } catch {
+      } catch (error) {
+        console.error('[useChatSocket] Failed to send message:', error);
         setMessages((prev) =>
           prev.map((message) =>
             message.clientMessageId === clientMessageId ? { ...message, status: 'error' } : message

@@ -1,4 +1,4 @@
-import { ForbiddenException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { ForbiddenException, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Message, SendMessageInput } from '@chat/shared';
 import { createClient } from 'redis';
@@ -13,6 +13,7 @@ type RedisClient = ReturnType<typeof createClient>;
 
 @Injectable()
 export class ChatService {
+  private readonly logger = new Logger(ChatService.name);
   private readonly messageTimestampsByUser = new Map<string, number[]>();
   private readonly inMemoryDedup = new Map<string, number>();
   private redisClient: RedisClient | null = null;
@@ -24,6 +25,7 @@ export class ChatService {
   ) {
     const redisUrl = this.configService.get<string>('REDIS_URL');
     if (!redisUrl) {
+      this.logger.warn('REDIS_URL not configured, falling back to in-memory deduplication');
       return;
     }
 
@@ -32,8 +34,13 @@ export class ChatService {
       .connect()
       .then(() => {
         this.redisClient = client;
+        this.logger.log('Redis connected for deduplication');
       })
-      .catch(() => {
+      .catch((error) => {
+        this.logger.error(
+          `Failed to connect to Redis: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          error instanceof Error ? error.stack : undefined,
+        );
         this.redisClient = null;
       });
   }
@@ -55,6 +62,9 @@ export class ChatService {
 
     if (activeInWindow.length >= MESSAGE_LIMIT_PER_MINUTE) {
       this.messageTimestampsByUser.set(userId, activeInWindow);
+      this.logger.warn(
+        `Rate limit exceeded for user ${userId}: ${activeInWindow.length} messages in ${RATE_LIMIT_WINDOW_MS}ms`,
+      );
       throw new HttpException({
         error: {
           code: 'RATE_LIMITED',
@@ -73,6 +83,9 @@ export class ChatService {
   async sendMessage(userId: string, input: SendMessageInput): Promise<Message> {
     const isParticipant = await this.isUserParticipant(userId, input.conversationId);
     if (!isParticipant) {
+      this.logger.warn(
+        `User ${userId} attempted to send message to conversation ${input.conversationId} but is not a participant`,
+      );
       throw new ForbiddenException({
         error: {
           code: 'NOT_IN_CONVERSATION',
@@ -87,9 +100,15 @@ export class ChatService {
     if (!reserved) {
       const existing = await this.messagesRepository.findByClientMessageId(input.clientMessageId);
       if (existing) {
+        this.logger.warn(
+          `Duplicate message detected for clientMessageId ${input.clientMessageId}, returning existing message ${existing.id}`,
+        );
         return this.toSharedMessage(existing);
       }
 
+      this.logger.error(
+        `Failed to reserve dedup key for clientMessageId ${input.clientMessageId}: message already being processed`,
+      );
       throw new HttpException({
         error: {
           code: 'DB_ERROR',
@@ -109,6 +128,11 @@ export class ChatService {
       ...input,
       senderId: userId,
     });
+
+    this.logger.log(
+      `Message created: ${created.id} by user ${userId} in conversation ${input.conversationId}`,
+    );
+
     return this.toSharedMessage(created);
   }
 

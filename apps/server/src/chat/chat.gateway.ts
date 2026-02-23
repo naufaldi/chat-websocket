@@ -90,7 +90,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       client.data.userId = payload.sub;
       client.emit('auth:success', authSuccessEventSchema.parse({ userId: payload.sub }));
-    } catch {
+      this.logger.log(`Client connected: ${client.id}, userId: ${payload.sub}`);
+    } catch (error) {
+      this.logger.error(
+        `Auth failed for client ${client.id}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       this.emitAuthError(client, 'Unauthorized', 'AUTH_FAILED');
       client.disconnect(true);
     }
@@ -120,12 +125,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<void> {
     const parse = subscribeEventSchema.safeParse(payload);
     if (!parse.success) {
+      this.logger.warn(
+        `Subscribe validation failed for client ${client.id}: ${parse.error.message}`,
+      );
       this.emitMessageError(client, undefined, 'Invalid payload', 'VALIDATION_ERROR');
       return;
     }
 
     const userId = client.data.userId;
     if (!userId) {
+      this.logger.warn(`Unauthorized subscribe attempt from client ${client.id}`);
       this.emitAuthError(client, 'Unauthorized', 'AUTH_FAILED');
       return;
     }
@@ -133,6 +142,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const { conversationId } = parse.data;
     const isParticipant = await this.chatService.isUserParticipant(userId, conversationId);
     if (!isParticipant) {
+      this.logger.warn(
+        `User ${userId} attempted to subscribe to conversation ${conversationId} but is not a participant`,
+      );
       this.emitAuthError(client, 'Not in conversation', 'NOT_IN_CONVERSATION');
       return;
     }
@@ -148,6 +160,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<void> {
     const parse = unsubscribeEventSchema.safeParse(payload);
     if (!parse.success) {
+      this.logger.warn(
+        `Unsubscribe validation failed for client ${client.id}: ${parse.error.message}`,
+      );
       this.emitMessageError(client, undefined, 'Invalid payload', 'VALIDATION_ERROR');
       return;
     }
@@ -170,6 +185,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const parse = messageSendEventSchema.safeParse(payload);
     if (!parse.success) {
+      this.logger.warn(
+        `Message send validation failed for user ${userId}: ${parse.error.message}`,
+      );
       this.emitMessageError(
         client,
         this.extractClientMessageId(payload),
@@ -197,9 +215,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server
         .to(this.toConversationRoom(parse.data.conversationId))
         .emit('message:received', messageReceivedEventSchema.parse({ message }));
+
+      this.logger.log(
+        `Message sent: ${message.id} by user ${userId} in conversation ${parse.data.conversationId}`,
+      );
     } catch (error) {
       const { message, code, retryAfter } = this.resolveSocketError(error);
       const msg = message || 'Failed to send message';
+
+      this.logger.error(
+        `Failed to send message for user ${userId}: ${msg} (code: ${code})`,
+        error instanceof Error ? error.stack : undefined,
+      );
+
       this.emitMessageError(client, parse.data.clientMessageId, msg, code, retryAfter);
     }
   }
@@ -309,9 +337,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           }),
         );
       }
+
+      this.logger.log(
+        `Receipt marked read: message ${messageId} by user ${userId} in conversation ${conversationId}`,
+      );
     } catch (error) {
-      // Silently fail - don't disrupt the user
-      this.logger.debug(`Failed to mark receipt: ${error}`);
+      this.logger.error(
+        `Failed to mark receipt for message ${messageId} by user ${userId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error instanceof Error ? error.stack : undefined,
+      );
     }
   }
 

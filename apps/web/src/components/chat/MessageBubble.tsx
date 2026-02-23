@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { MoreVertical, Trash2 } from 'lucide-react';
+import { MoreVertical, Trash2, Check, CheckCheck } from 'lucide-react';
 
 interface MessageBubbleProps {
   content: string;
@@ -32,21 +32,24 @@ export function MessageBubble({
 
   return (
     <div className={`flex ${isSent ? 'justify-end' : 'justify-start'} mb-2 group`}>
-      <div className="relative">
+      <div className="relative max-w-[40%]">
         <div
-          className={`max-w-[60%] px-4 py-2 rounded-2xl ${
+          className={`px-4 py-2 rounded-2xl ${
             isSent
               ? 'bg-[#EFFDDE] rounded-br-md' // Telegram sent (green)
               : 'bg-white border border-gray-200 rounded-bl-md' // Received (white)
           }`}
         >
-          <p className="text-sm">{content}</p>
-          <div className="flex items-center justify-end gap-1 mt-1">
+          <p className="text-sm break-words whitespace-pre-wrap min-w-[60px]">{content}</p>
+          <div className="flex items-end justify-end gap-1 mt-1">
             <span className="text-[10px] text-gray-400">
               {format(new Date(timestamp), 'HH:mm')}
             </span>
             {isSent && (
-              <span className="text-[10px] text-gray-400">{isRead ? '✓✓' : '✓'}</span>
+              <span className={`flex flex-col items-center leading-[0.5] ${isRead ? 'text-[#3390EC]' : 'text-gray-400'}`}>
+                <Check className="w-3 h-3" />
+                <CheckCheck className="w-3 h-3 -mt-[2px]" />
+              </span>
             )}
           </div>
         </div>
