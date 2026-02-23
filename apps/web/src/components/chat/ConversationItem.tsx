@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { MoreVertical, Trash2, LogOut } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import type { ConversationListItem } from '@/types/conversation';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface ConversationItemProps {
   conversation: ConversationListItem;
@@ -14,6 +15,7 @@ interface ConversationItemProps {
 export function ConversationItem({ conversation, isActive, onClick, onLeave, onDelete }: ConversationItemProps) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuthContext();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -28,8 +30,11 @@ export function ConversationItem({ conversation, isActive, onClick, onLeave, onD
   // Helper to get display name (for direct chats without title)
   const getDisplayName = () => {
     if (conversation.title) return conversation.title;
-    // For direct chats, show the other participant's name
-    const otherParticipant = conversation.participants.find((p) => p.role !== 'owner');
+    const otherParticipant = conversation.participants.find((p) => p.user.id !== user?.id);
+    if (!otherParticipant) {
+      const fallback = conversation.participants[0];
+      return fallback?.user.displayName || fallback?.user.username || 'Direct Chat';
+    }
     return otherParticipant?.user.displayName || otherParticipant?.user.username || 'Unknown';
   };
 
