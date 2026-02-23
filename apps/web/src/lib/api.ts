@@ -10,7 +10,9 @@ import type {
   ConversationCreated,
   CreateConversationInput,
 } from '@chat/shared/schemas/conversation';
-import { userSearchResponseSchema } from '@chat/shared/schemas/user';
+import { userSearchResponseSchema, userSchema } from '@chat/shared/schemas/user';
+import { privacySettingsSchema } from '@chat/shared/schemas/user';
+import type { UpdateProfileInput, PrivacySettings, User } from '@chat/shared/schemas/user';
 import { messagesListResponseSchema, messageSchema } from '@chat/shared/schemas/message';
 import type { ConversationsQueryResponse } from '@/types/conversation';
 
@@ -180,6 +182,16 @@ export const usersApi = {
     params.set('limit', String(limit));
     const response = await api.get('/users/search', { params });
     return userSearchResponseSchema.parse(response.data);
+  },
+
+  updateProfile: async (data: UpdateProfileInput): Promise<User> => {
+    const response = await api.patch('/users/me', data);
+    return userSchema.parse(response.data);
+  },
+
+  updatePrivacy: async (data: PrivacySettings): Promise<PrivacySettings> => {
+    const response = await api.patch('/users/me/privacy', data);
+    return privacySettingsSchema.parse(response.data);
   },
 };
 
