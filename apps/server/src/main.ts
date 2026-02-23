@@ -7,6 +7,9 @@ import { RedisIoAdapter } from './chat/redis-io.adapter';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
+  // Enable graceful shutdown hooks
+  app.enableShutdownHooks();
+
   // Set global API prefix
   app.setGlobalPrefix('api');
 
@@ -43,6 +46,17 @@ async function bootstrap(): Promise<void> {
   SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT || 3000;
+
+  // Graceful shutdown handler
+  const gracefulShutdown = async (signal: string): Promise<void> => {
+    console.log(`Received ${signal}, starting graceful shutdown...`);
+    await app.close();
+    console.log('Graceful shutdown complete');
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
   try {
     await app.listen(port);
