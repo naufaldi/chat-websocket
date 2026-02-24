@@ -29,6 +29,13 @@
       "when": 1771828301645,
       "tag": "0003_mature_maggott",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1771894714592,
+      "tag": "0004_smart_mach_iv",
+      "breakpoints": true
     }
   ]
 }

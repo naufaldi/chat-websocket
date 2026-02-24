@@ -30,6 +30,8 @@ export const users = pgTable('users', {
   // Presence settings
   presenceEnabled: boolean('presence_enabled').default(true).notNull(),
   presenceSharing: presenceSharingEnum('presence_sharing').default('everyone').notNull(),
+  // Read receipt settings
+  readReceiptsEnabled: boolean('read_receipts_enabled').default(true).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
