@@ -308,14 +308,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const { conversationId, messageId } = parse.data;
 
     try {
-      // Mark as read in database
-      await this.readReceiptsService.markAsRead(userId, conversationId, messageId);
+      // Mark as read - returns {isBatched} to determine handling
+      const { isBatched } = await this.readReceiptsService.markAsRead(userId, conversationId, messageId);
 
       // Get conversation type to determine broadcast format
       const isDirect = await this.chatService.isDirectConversation(conversationId);
 
-      if (isDirect) {
-        // 1:1 chat - instant notification
+      if (isDirect || !isBatched) {
+        // 1:1 chat or small group - instant notification with full details
         client.to(this.toConversationRoom(conversationId)).emit(
           'receipt:updated',
           receiptUpdatedEventSchema.parse({
@@ -325,21 +325,26 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           }),
         );
       } else {
-        // Group chat - send count
+        // Large group chat - use Redis counter for real-time count
+        // Note: The actual DB write happens in the batch worker
+        const redisCount = await this.readReceiptsService.getRedisReadCount(conversationId, messageId);
         const receipts = await this.readReceiptsService.getReceiptsForMessage(messageId, userId);
+        
+        // Use Redis count + DB count for accurate real-time number
+        const realTimeCount = Math.max(redisCount, receipts.readCount);
         
         client.to(this.toConversationRoom(conversationId)).emit(
           'receipt:count',
           receiptCountEventSchema.parse({
             messageId,
-            readCount: receipts.readCount,
+            readCount: realTimeCount,
             totalParticipants: receipts.totalCount,
           }),
         );
       }
 
       this.logger.log(
-        `Receipt marked read: message ${messageId} by user ${userId} in conversation ${conversationId}`,
+        `Receipt marked read: message ${messageId} by user ${userId} in conversation ${conversationId} (batched: ${isBatched})`,
       );
     } catch (error) {
       this.logger.error(
