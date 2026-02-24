@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   ReadReceiptsListResponse,
-  ReceiptReadEvent,
   ReceiptUpdatedEvent,
   ReceiptCountEvent,
 } from '@chat/shared/schemas/read-receipt';
 import { chatSocketService } from '@/lib/socket';
+import { readReceiptsApi } from '@/lib/api';
 
 // Query keys for read receipts
 export const readReceiptKeys = {
@@ -23,9 +23,8 @@ export function useReadReceipts(messageId: string | null) {
     queryKey: readReceiptKeys.message(messageId || ''),
     queryFn: async (): Promise<ReadReceiptsListResponse | null> => {
       if (!messageId) return null;
-      // For now, return null until we have a REST endpoint
-      // This will be populated via WebSocket events
-      return null;
+      // Fetch read receipts from REST API
+      return readReceiptsApi.getForMessage(messageId);
     },
     enabled: !!messageId,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -138,18 +137,10 @@ export function useReadReceipts(messageId: string | null) {
 // Hook for marking messages as read
 export function useMarkAsRead() {
   return {
-    markAsRead: (conversationId: string, messageId: string, lastReadMessageId?: string) => {
-      const event: ReceiptReadEvent = {
-        conversationId,
-        messageId,
-        lastReadMessageId,
-      };
-
-      // Send via WebSocket
+    markAsRead: (conversationId: string, messageId: string) => {
+      // Send via WebSocket using the proper socket service method
       if (chatSocketService.isConnected()) {
-        // Note: The socket service doesn't have a dedicated method for this yet
-        // We'll need to add it or use a generic emit
-        (chatSocketService as any).emit?.('receipt:read', event);
+        chatSocketService.markAsRead({ conversationId, messageId });
       }
     },
   };

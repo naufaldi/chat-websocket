@@ -160,6 +160,10 @@ export class ChatSocketService {
     this.emitValidated('presence:heartbeat', { status });
   }
 
+  markAsRead(payload: { conversationId: string; messageId: string }): void {
+    this.emitValidated('receipt:read', payload);
+  }
+
   on<E extends ServerEventName>(
     event: E,
     handler: (payload: E extends keyof ServerEventPayloadMap ? ServerEventPayloadMap[E] : DefaultServerPayload) => void

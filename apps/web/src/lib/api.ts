@@ -14,6 +14,8 @@ import { userSearchResponseSchema, userSchema } from '@chat/shared/schemas/user'
 import { privacySettingsSchema } from '@chat/shared/schemas/user';
 import type { UpdateProfileInput, PrivacySettings, User } from '@chat/shared/schemas/user';
 import { messagesListResponseSchema, messageSchema } from '@chat/shared/schemas/message';
+import { readReceiptsListResponseSchema } from '@chat/shared/schemas/read-receipt';
+import type { ReadReceiptsListResponse } from '@chat/shared/schemas/read-receipt';
 import type { ConversationsQueryResponse } from '@/types/conversation';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -192,6 +194,18 @@ export const usersApi = {
   updatePrivacy: async (data: PrivacySettings): Promise<PrivacySettings> => {
     const response = await api.patch('/users/me/privacy', data);
     return privacySettingsSchema.parse(response.data);
+  },
+};
+
+// Read Receipts API functions
+export const readReceiptsApi = {
+  getForMessage: async (messageId: string): Promise<ReadReceiptsListResponse> => {
+    const response = await api.get(`/messages/${messageId}/receipts`);
+    return readReceiptsListResponseSchema.parse(response.data);
+  },
+
+  markAsRead: async (messageId: string): Promise<void> => {
+    await api.post(`/messages/${messageId}/read`);
   },
 };
 
