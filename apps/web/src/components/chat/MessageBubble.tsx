@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { MoreVertical, Trash2 } from 'lucide-react';
 import type { MessageStatus } from '@chat/shared';
-import { ReadReceipt } from './ReadReceipt';
+import { ReadReceipt, ReadReceiptCount, ReadReceiptDetails } from './ReadReceipt';
+import { useReadReceipts } from '@/hooks/useReadReceipts';
+import { useViewportRead } from '@/hooks/useViewportRead';
 
 interface MessageBubbleProps {
   content: string;
@@ -12,6 +14,7 @@ interface MessageBubbleProps {
   messageId?: string;
   conversationId?: string;
   onDelete?: (messageId: string) => void;
+  isGroup?: boolean;
 }
 
 export function MessageBubble({
@@ -22,8 +25,21 @@ export function MessageBubble({
   messageId,
   conversationId,
   onDelete,
+  isGroup = false,
 }: MessageBubbleProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+
+  // Fetch read receipts for this message
+  const { receipts, readCount, totalCount, isLoading } = useReadReceipts(messageId || null);
+
+  // Auto-mark as read when message comes into viewport
+  const viewportRef = useViewportRead({
+    conversationId: conversationId || '',
+    messageId: messageId || '',
+    isOwnMessage: isSent,
+    isRead: readCount > 0 && !isSent,
+  });
 
   const handleDelete = () => {
     if (messageId && onDelete) {
@@ -32,8 +48,18 @@ export function MessageBubble({
     }
   };
 
+  // Determine the effective status based on read receipts
+  const effectiveStatus: MessageStatus = isSent
+    ? readCount > 0
+      ? 'read'
+      : status
+    : status;
+
   return (
-    <div className={`flex ${isSent ? 'justify-end' : 'justify-start'} mb-2 group`}>
+    <div
+      ref={!isSent ? viewportRef : undefined}
+      className={`flex ${isSent ? 'justify-end' : 'justify-start'} mb-2 group`}
+    >
       <div className="relative max-w-[40%]">
         <div
           className={`relative px-4 py-2 rounded-2xl ${
@@ -70,10 +96,30 @@ export function MessageBubble({
             <span className="text-[10px] text-gray-400">
               {format(new Date(timestamp), 'HH:mm')}
             </span>
-            {isSent ? <ReadReceipt status={status} className="translate-y-[1px]" /> : null}
+            {isSent && (
+              <>
+                {isGroup && !isLoading ? (
+                  <ReadReceiptCount
+                    readCount={readCount}
+                    totalCount={totalCount}
+                    onClick={() => setShowDetails(true)}
+                    className="translate-y-[1px]"
+                  />
+                ) : (
+                  <ReadReceipt status={effectiveStatus} className="translate-y-[1px]" />
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Read Receipt Details Modal */}
+      <ReadReceiptDetails
+        receipts={receipts}
+        isOpen={showDetails}
+        onClose={() => setShowDetails(false)}
+      />
     </div>
   );
 }
