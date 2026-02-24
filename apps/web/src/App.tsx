@@ -33,15 +33,15 @@ function AppRoutes() {
         path="/"
         element={
           <ProtectedRoute>
-            <ChatPage />
+            <HomePage />
           </ProtectedRoute>
         }
       />
       <Route
-        path="/home"
+        path="/chat"
         element={
           <ProtectedRoute>
-            <HomePage />
+            <ChatPage />
           </ProtectedRoute>
         }
       />

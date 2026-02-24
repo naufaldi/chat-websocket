@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { conversationsApi } from '@/lib/api';
 import type { Message } from '@chat/shared/schemas/message';
@@ -28,7 +29,16 @@ export function useMessages({ conversationId }: UseMessagesOptions = {}) {
     enabled: !!conversationId,
   });
 
-  const messages: Message[] = query.data?.pages.flatMap((page) => page.messages) ?? [];
+  const messages: Message[] = useMemo(() => {
+    const allMessages = query.data?.pages.flatMap((page) => page.messages) ?? [];
+    const messageMap = new Map<string, Message>();
+    allMessages.forEach((message) => {
+      messageMap.set(message.id, message);
+    });
+    return Array.from(messageMap.values()).sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [query.data?.pages]);
 
   return {
     messages,

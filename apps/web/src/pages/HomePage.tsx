@@ -51,7 +51,7 @@ function OnlineContactsSidebar() {
           {mockOnlineContacts.map(contact => (
             <Link
               key={contact.id}
-              to={`/?chat=${contact.id}`}
+              to={`/chat?chat=${contact.id}`}
               className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <div className="relative">
@@ -74,7 +74,7 @@ function OnlineContactsSidebar() {
 
       <div className="p-4 border-t border-gray-200">
         <Link
-          to="/"
+          to="/chat"
           className="flex items-center justify-center gap-2 w-full py-2 bg-[#3390EC] text-white rounded-lg hover:bg-[#2a7bc9] transition-colors"
         >
           <MessageSquare className="w-4 h-4" />
@@ -150,7 +150,7 @@ function RecentConversations() {
           {conversations.map(conv => (
             <li key={conv.id}>
               <Link
-                to={`/?chat=${conv.id}`}
+                to={`/chat?chat=${conv.id}`}
                 className="flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors"
               >
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#3390EC] to-[#5c9ce6] flex items-center justify-center text-white font-medium">
@@ -170,7 +170,7 @@ function RecentConversations() {
       )}
       <div className="p-4 border-t border-gray-100">
         <Link
-          to="/"
+          to="/chat"
           className="text-[#3390EC] hover:underline text-sm font-medium"
         >
           View all conversations →

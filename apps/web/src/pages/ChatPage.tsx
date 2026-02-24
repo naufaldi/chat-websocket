@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useConversations } from '@/hooks/useConversations';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -14,6 +14,7 @@ import { useSocket } from '@/hooks/useSocket';
 import { useChatSocket } from '@/hooks/useChatSocket';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { messageKeys, useMessages } from '@/hooks/useMessages';
+import { useUserPresence } from '@/hooks/usePresence';
 import { conversationsApi } from '@/lib/api';
 import { ackOptimistic, markMessageError, upsertMessage } from '@/lib/messages-cache';
 import type { CreateConversationInput } from '@chat/shared/schemas/conversation';
@@ -71,7 +72,7 @@ export function ChatPage() {
     );
   };
 
-  const { typingUserIds, sendMessage, sendTypingStart, sendTypingStop } = useChatSocket({
+  const { typingUserIds, sendMessage, sendTypingStart, sendTypingStop, retryMessage } = useChatSocket({
     conversationId: selectedId,
     currentUserId: user?.id,
     enabled: isConnected,
@@ -192,6 +193,18 @@ export function ChatPage() {
     return otherParticipant?.user.displayName || otherParticipant?.user.username || 'Direct Chat';
   };
 
+  // Get other participant ID for presence tracking (direct chats only)
+  const otherParticipantId = useMemo(() => {
+    if (!selected) return null;
+    // For group chats, don't track individual presence
+    if (selected.title || selected.participants.length > 2) return null;
+    const otherParticipant = selected.participants.find((p) => p.user.id !== user?.id);
+    return otherParticipant?.user.id ?? null;
+  }, [selected, user?.id]);
+
+  // Subscribe to other user's presence
+  const { presence: otherUserPresence } = useUserPresence(otherParticipantId);
+
   const typingNames = selected
     ? selected.participants
         .filter((participant) => typingUserIds.includes(participant.user.id) && participant.user.id !== user?.id)
@@ -220,7 +233,8 @@ export function ChatPage() {
         <>
           <ChatHeader
             name={getDisplayName(selected)}
-            status={isConnected ? 'online' : 'offline'}
+            presence={otherUserPresence}
+            participantCount={selected.participants.length}
             connectionStatus={<ConnectionStatus status={connectionStatus} />}
           />
           <MessageList
@@ -231,6 +245,7 @@ export function ChatPage() {
             isFetchingNextPage={isFetchingMessagesNextPage}
             fetchNextPage={() => fetchMessagesNextPage()}
             onDeleteMessage={handleDeleteMessage}
+            onRetryMessage={retryMessage}
           />
           <TypingIndicator names={typingNames} />
           <MessageInput onSend={handleSendMessage} onTextChange={onInputActivity} />

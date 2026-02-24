@@ -4,12 +4,20 @@ import { chatSocketService, type ChatSocketService } from '@/lib/socket';
 import { conversationsApi } from '@/lib/api';
 
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
+const MAX_RETRIES = 3;
+const BASE_RETRY_DELAY = 1000;
 
 function buildClientMessageId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
   return `${Date.now()}-${Math.random()}`.padEnd(36, '0').slice(0, 36);
+}
+
+interface PendingMessage {
+  content: string;
+  conversationId: string;
+  attempts: number;
 }
 
 interface UseChatSocketOptions {
@@ -45,6 +53,7 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingUserIds, setTypingUserIds] = useState<string[]>([]);
   const disconnectedAtRef = useRef<string | null>(null);
+  const pendingMessagesRef = useRef<Map<string, PendingMessage>>(new Map());
 
   useEffect(() => {
     setMessages([]);
@@ -146,6 +155,9 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
     });
 
     const offMessageSent = service.on('message:sent', ({ clientMessageId, messageId, timestamp, conversationId: eventConversationId }) => {
+      // Clean up pending message on successful send
+      pendingMessagesRef.current.delete(clientMessageId);
+
       onMessageSent?.({
         clientMessageId,
         messageId,
@@ -167,7 +179,49 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
       );
     });
 
-    const offMessageError = service.on('message:error', ({ clientMessageId }) => {
+    const offMessageError = service.on('message:error', ({ clientMessageId, retryable, retryAfter }) => {
+      const pending = pendingMessagesRef.current.get(clientMessageId);
+
+      // Attempt automatic retry if retryable and under max retries
+      if (retryable && pending && pending.attempts < MAX_RETRIES) {
+        pending.attempts += 1;
+        const delay = retryAfter ?? BASE_RETRY_DELAY * Math.pow(2, pending.attempts - 1);
+
+        setTimeout(() => {
+          if (service.getStatus() === 'connected') {
+            try {
+              service.sendMessage({
+                conversationId: pending.conversationId,
+                content: pending.content,
+                clientMessageId,
+              });
+            } catch {
+              // Retry failed, mark as error
+              pendingMessagesRef.current.delete(clientMessageId);
+              onMessageError?.({ clientMessageId });
+              setMessages((prev) =>
+                prev.map((message) =>
+                  message.clientMessageId === clientMessageId ? { ...message, status: 'error' } : message
+                )
+              );
+            }
+          } else {
+            // Socket not connected, retry failed
+            pendingMessagesRef.current.delete(clientMessageId);
+            onMessageError?.({ clientMessageId });
+            setMessages((prev) =>
+              prev.map((message) =>
+                message.clientMessageId === clientMessageId ? { ...message, status: 'error' } : message
+              )
+            );
+          }
+        }, delay);
+
+        return;
+      }
+
+      // Max retries reached or not retryable, clean up and mark as error
+      pendingMessagesRef.current.delete(clientMessageId);
       onMessageError?.({ clientMessageId });
       setMessages((prev) =>
         prev.map((message) =>
@@ -215,6 +269,13 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
 
       const now = new Date().toISOString();
       const clientMessageId = buildClientMessageId();
+
+      // Store pending message for potential retry
+      pendingMessagesRef.current.set(clientMessageId, {
+        content: trimmed,
+        conversationId,
+        attempts: 0,
+      });
 
       // If socket is not connected, create message with error status so user sees feedback
       const isConnected = enabled && service.getStatus() === 'connected';
@@ -272,6 +333,53 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
     service.typingStop(conversationId);
   }, [conversationId, enabled, service]);
 
+  /**
+   * Retry sending a failed message.
+   * Uses exponential backoff for retry attempts.
+   */
+  const retryMessage = useCallback(
+    (clientMessageId: string) => {
+      const pending = pendingMessagesRef.current.get(clientMessageId);
+      if (!pending || pending.attempts >= MAX_RETRIES) {
+        console.error('[useChatSocket] Max retries reached or message not found:', clientMessageId);
+        return false;
+      }
+
+      if (service.getStatus() !== 'connected') {
+        console.error('[useChatSocket] Cannot retry: socket not connected');
+        return false;
+      }
+
+      pending.attempts += 1;
+
+      // Update message status to sending
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.clientMessageId === clientMessageId ? { ...message, status: 'sending' } : message
+        )
+      );
+
+      try {
+        service.sendMessage({
+          conversationId: pending.conversationId,
+          content: pending.content,
+          clientMessageId,
+        });
+        return true;
+      } catch (error) {
+        console.error('[useChatSocket] Retry failed:', error);
+        // Revert to error status
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.clientMessageId === clientMessageId ? { ...message, status: 'error' } : message
+          )
+        );
+        return false;
+      }
+    },
+    [service]
+  );
+
   return useMemo(
     () => ({
       messages,
@@ -279,7 +387,8 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
       sendMessage,
       sendTypingStart,
       sendTypingStop,
+      retryMessage,
     }),
-    [messages, sendMessage, sendTypingStart, sendTypingStop, typingUserIds]
+    [messages, sendMessage, sendTypingStart, sendTypingStop, retryMessage, typingUserIds]
   );
 }

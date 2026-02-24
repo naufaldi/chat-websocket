@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  User, 
-  Lock, 
-  Bell, 
-  Palette, 
-  HelpCircle, 
-  Info, 
+import {
+  ArrowLeft,
+  User,
+  Lock,
+  Bell,
+  Palette,
+  HelpCircle,
+  Info,
   ChevronRight,
   LogOut,
   Shield,
@@ -15,6 +15,8 @@ import {
   Globe
 } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useUpdateProfile, useUpdatePrivacy } from '@/hooks/useUpdateProfile';
+import { EditProfileModal } from '@/components/settings/EditProfileModal';
 
 interface SettingItemProps {
   icon: React.ReactNode;
@@ -65,6 +67,9 @@ export function SettingsPage() {
   const { user, logout } = useAuthContext();
   const [privacySetting, setPrivacySetting] = useState<'everyone' | 'friends' | 'nobody'>('everyone');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+
+  const { mutate: updatePrivacy, isPending: isUpdatingPrivacy } = useUpdatePrivacy();
 
   const handleLogout = () => {
     if (confirm('Are you sure you want to log out?')) {
@@ -72,12 +77,17 @@ export function SettingsPage() {
     }
   };
 
+  const handlePrivacyChange = (value: 'everyone' | 'friends' | 'nobody') => {
+    setPrivacySetting(value);
+    updatePrivacy({ presenceSharing: value });
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
       <div className="bg-[#3390EC] text-white px-4 py-5">
         <div className="flex items-center gap-3">
-          <Link to="/" className="p-1 -ml-1 hover:bg-white/20 rounded-full transition-colors">
+          <Link to="/chat" className="p-1 -ml-1 hover:bg-white/20 rounded-full transition-colors">
             <ArrowLeft className="w-6 h-6" />
           </Link>
           <h1 className="text-xl font-semibold">Settings</h1>
@@ -104,13 +114,13 @@ export function SettingsPage() {
         
         {/* Account Section */}
         <SettingSection title="Account">
-          <SettingItem 
+          <SettingItem
             icon={<User className="w-5 h-5 text-gray-600" />}
             label="Edit Profile"
-            onClick={() => alert('Edit profile coming soon!')}
+            onClick={() => setIsEditProfileOpen(true)}
           />
           <div className="h-px bg-gray-100 mx-4" />
-          <SettingItem 
+          <SettingItem
             icon={<Lock className="w-5 h-5 text-gray-600" />}
             label="Privacy & Security"
             onClick={() => alert('Privacy settings coming soon!')}
@@ -132,8 +142,9 @@ export function SettingsPage() {
               </div>
               <select
                 value={privacySetting}
-                onChange={(e) => setPrivacySetting(e.target.value as 'everyone' | 'friends' | 'nobody')}
-                className="text-sm text-gray-500 bg-transparent border-none focus:outline-none text-right"
+                onChange={(e) => handlePrivacyChange(e.target.value as 'everyone' | 'friends' | 'nobody')}
+                disabled={isUpdatingPrivacy}
+                className="text-sm text-gray-500 bg-transparent border-none focus:outline-none text-right disabled:opacity-50"
               >
                 <option value="everyone">Everyone</option>
                 <option value="friends">My Contacts</option>
@@ -239,6 +250,17 @@ export function SettingsPage() {
         </div>
 
       </div>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+        currentProfile={{
+          displayName: user?.displayName ?? '',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          avatarUrl: (user as any)?.avatarUrl ?? null,
+        }}
+      />
     </div>
   );
 }

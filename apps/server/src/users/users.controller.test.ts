@@ -1,16 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { UsersController } from './users.controller';
 import { UsersRepository } from './users.repository';
+import { UsersService } from './users.service';
 
 describe('UsersController', () => {
   let controller: UsersController;
   let repository: UsersRepository;
+  let service: UsersService;
 
   beforeEach(() => {
     repository = {
       searchPublicUsers: vi.fn(),
+      updateProfile: vi.fn(),
+      updatePrivacy: vi.fn(),
     } as unknown as UsersRepository;
-    controller = new UsersController(repository);
+    service = {
+      updateProfile: vi.fn(),
+      updatePrivacy: vi.fn(),
+    } as unknown as UsersService;
+    controller = new UsersController(repository, service);
   });
 
   describe('searchUsers', () => {
@@ -52,6 +60,42 @@ describe('UsersController', () => {
 
       await controller.searchUsers({ user: { userId: 'user1' } }, 'query', '100');
       expect(repository.searchPublicUsers).toHaveBeenCalledWith('query', 'user1', 50);
+    });
+  });
+
+  describe('updateProfile', () => {
+    it('should update profile via service', async () => {
+      const mockUser = {
+        id: 'user1',
+        username: 'john',
+        displayName: 'John Updated',
+        avatarUrl: null,
+        lastSeenAt: null,
+      };
+      vi.mocked(service.updateProfile).mockResolvedValue(mockUser);
+
+      const result = await controller.updateProfile(
+        { user: { userId: 'user1' } },
+        { displayName: 'John Updated' },
+      );
+
+      expect(service.updateProfile).toHaveBeenCalledWith('user1', { displayName: 'John Updated' });
+      expect(result).toEqual(mockUser);
+    });
+  });
+
+  describe('updatePrivacy', () => {
+    it('should update privacy via service', async () => {
+      const mockPrivacy = { presenceSharing: 'friends' as const };
+      vi.mocked(service.updatePrivacy).mockResolvedValue(mockPrivacy);
+
+      const result = await controller.updatePrivacy(
+        { user: { userId: 'user1' } },
+        { presenceSharing: 'friends' },
+      );
+
+      expect(service.updatePrivacy).toHaveBeenCalledWith('user1', { presenceSharing: 'friends' });
+      expect(result).toEqual(mockPrivacy);
     });
   });
 });

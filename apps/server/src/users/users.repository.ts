@@ -3,7 +3,7 @@ import { and, eq, ilike, ne, or } from 'drizzle-orm';
 import { DRIZZLE } from '../database/database.service';
 import type { DrizzleDB } from '../database/database.types';
 import { users } from '@chat/db';
-import type { RegisterInput } from '@chat/shared';
+import type { RegisterInput, UpdateProfileInput, PrivacySettings } from '@chat/shared';
 
 // Type inference from Drizzle schema
 interface User {
@@ -97,5 +97,50 @@ export class UsersRepository {
         )
       )
       .limit(limit);
+  }
+
+  /**
+   * Update user profile fields.
+   * Only updates provided fields (partial update).
+   */
+  async updateProfile(userId: string, data: UpdateProfileInput): Promise<User | null> {
+    // Build update object with only provided fields (immutable approach)
+    const updateData: Partial<typeof users.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+
+    if (data.displayName !== undefined) {
+      updateData.displayName = data.displayName;
+    }
+
+    if (data.avatarUrl !== undefined) {
+      updateData.avatarUrl = data.avatarUrl;
+    }
+
+    const [user] = await this.db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+
+    return user ?? null;
+  }
+
+  /**
+   * Update user privacy settings.
+   */
+  async updatePrivacy(userId: string, data: PrivacySettings): Promise<PrivacySettings | null> {
+    const [user] = await this.db
+      .update(users)
+      .set({
+        presenceSharing: data.presenceSharing,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning({
+        presenceSharing: users.presenceSharing,
+      });
+
+    return user ?? null;
   }
 }

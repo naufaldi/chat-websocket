@@ -11,6 +11,7 @@ interface MessageListProps {
   isFetchingNextPage: boolean;
   fetchNextPage: () => void;
   onDeleteMessage?: (messageId: string) => void;  // eslint-disable-line no-unused-vars
+  onRetryMessage?: (clientMessageId: string) => boolean;  // eslint-disable-line no-unused-vars
 }
 
 export function MessageList({
@@ -21,6 +22,7 @@ export function MessageList({
   isFetchingNextPage,
   fetchNextPage,
   onDeleteMessage,
+  onRetryMessage,
 }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
@@ -81,12 +83,14 @@ export function MessageList({
         <MessageBubble
           key={message.id}
           messageId={message.id}
+          clientMessageId={message.clientMessageId ?? undefined}
           conversationId={conversationId}
           content={message.content}
           timestamp={message.createdAt}
           isSent={message.senderId === currentUserId}
           status={message.status}
           onDelete={onDeleteMessage}
+          onRetry={onRetryMessage}
         />
       ))}
     </div>

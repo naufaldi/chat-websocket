@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { MoreVertical, Trash2 } from 'lucide-react';
+import { MoreVertical, Trash2, RefreshCw } from 'lucide-react';
 import type { MessageStatus } from '@chat/shared';
 import { ReadReceipt, ReadReceiptCount, ReadReceiptDetails } from './ReadReceipt';
 import { useReadReceipts } from '@/hooks/useReadReceipts';
@@ -12,8 +12,10 @@ interface MessageBubbleProps {
   isSent: boolean;
   status?: MessageStatus;
   messageId?: string;
+  clientMessageId?: string;
   conversationId?: string;
   onDelete?: (messageId: string) => void;
+  onRetry?: (clientMessageId: string) => boolean;
   isGroup?: boolean;
 }
 
@@ -23,8 +25,10 @@ export function MessageBubble({
   isSent,
   status = 'delivered',
   messageId,
+  clientMessageId,
   conversationId,
   onDelete,
+  onRetry,
   isGroup = false,
 }: MessageBubbleProps) {
   const [showMenu, setShowMenu] = useState(false);
@@ -45,6 +49,12 @@ export function MessageBubble({
     if (messageId && onDelete) {
       onDelete(messageId);
       setShowMenu(false);
+    }
+  };
+
+  const handleRetry = () => {
+    if (clientMessageId && onRetry) {
+      onRetry(clientMessageId);
     }
   };
 
@@ -98,7 +108,16 @@ export function MessageBubble({
             </span>
             {isSent && (
               <>
-                {isGroup && !isLoading ? (
+                {status === 'error' && onRetry && clientMessageId ? (
+                  <button
+                    onClick={handleRetry}
+                    className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600 transition-colors"
+                    title="Retry sending message"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Retry</span>
+                  </button>
+                ) : isGroup && !isLoading ? (
                   <ReadReceiptCount
                     readCount={readCount}
                     totalCount={totalCount}
