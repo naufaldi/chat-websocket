@@ -6,7 +6,7 @@
 > **Tech Stack:** NestJS 11.x + Drizzle 0.45.x + PostgreSQL + Redis + Socket.io 4.x + Bun Workspaces  
 > **Frontend:** React 19.x + Vite 7.x + TanStack Query 5.x + Tailwind 4.x  
 > **Documentation:** Swagger/OpenAPI 3.0  
-> **Last Updated:** 2026-02-23 (Task 005 in progress, AGENTS.md living doc reference added)
+> **Last Updated:** 2026-02-24 (Task 005 Read Receipts - COMPLETE)
 
 ---
 
@@ -19,7 +19,7 @@
 | 2 | Conversations API | ✅ Complete | 3 | ✅ |
 | 3 | WebSocket Gateway | ✅ Complete | 4 | - |
 | 4 | Message System | 🔄 In Progress | 5 | ✅ | ~70% |
-| 5 | Read Receipts | 🔄 In Progress | 4 | ✅ | ~60% | See [TASK-005 details](#-task-005-read-receipts) |
+| 5 | Read Receipts | ✅ Complete | 4 | ✅ | 100% | See [TASK-005 details](#-task-005-read-receipts) |
 | 6 | Presence System | 🔄 In Progress | 3 | ✅ | ~60% |
 | 7 | Deployment & Observability | 🔄 In Progress | 3 | ✅ | ~50% |
 | 8 | User Search API | 🔄 In Progress | 2 | - | ~85% |
@@ -28,9 +28,9 @@
 | 11 | Home Dashboard Page | 🔄 In Progress | 3 | - | ~50% |
 | 12 | Settings & Profile Page | 🔄 In Progress | 3 | - | ~40% |
 
-**Total:** 29 days (~6 weeks) | **Completed:** 4/13 tasks | **In Progress:** 9/13 tasks | **Actual Overall:** ~65%
+**Total:** 29 days (~6 weeks) | **Completed:** 5/13 tasks | **In Progress:** 8/13 tasks | **Actual Overall:** ~70%
 
-> *Note: See [Reality Check](#-reality-check-codebase-audit) section below for detailed gap analysis. Tasks 5, 6, 7 previously marked complete but have critical missing pieces.*
+> *Note: See [Reality Check](#-reality-check-codebase-audit) section below for detailed gap analysis. Task 005 is now complete. Tasks 6, 7 still have critical missing pieces.*
 
 ---
 
@@ -743,30 +743,32 @@ curl "http://localhost:3000/api/conversations/{id}/messages?limit=20" \
 
 ---
 
-## 🔄 TASK-005: Read Receipts
+## ✅ TASK-005: Read Receipts
 
-**Status:** 🔄 **IN PROGRESS (~60% Complete)**
-**Priority:** 🔴 Critical | **Est:** 4 days | **Dependencies:** TASK-004
+**Status:** ✅ **COMPLETE (2026-02-24)**
+**Priority:** 🔴 Critical | **Est:** 4 days | **Dependencies:** TASK-004 | **Actual Time:** ~2 days
 
 ### Overview
 Read receipt system with hybrid architecture (instant for 1:1, batched for groups).
 
 ### Current State Summary
-**What's Working:**
-- Database schema (read_receipts table, conversation_participants.last_read_message_id)
-- WebSocket events (receipt:read, receipt:updated, receipt:count)
-- REST endpoints (GET /api/messages/:id/receipts, POST /api/messages/:id/read)
-- 1:1 chat instant receipts (immediate DB write)
-- Backend service implemented
+**✅ ALL COMPLETE - Task 005 Finished 2026-02-24**
 
-**Critical Gaps:**
-- [ ] **Group chat batching not implemented** - All receipts write directly to DB
-  - Missing: Redis counter `read_count:{conversation_id}:{message_id}`
-  - Missing: Redis queue `read_receipts:pending`
-  - Missing: Batch worker with `@Interval(10000)`
-- [ ] **No frontend components:** ReadReceipt, ReadReceiptDetails, ReadReceiptCount
-- [ ] **No frontend hooks:** useReadReceipts, useMarkAsRead
-- [ ] **Privacy setting missing:** `read_receipts_enabled` not in users table
+**Implemented:**
+- [x] Database schema (read_receipts table, conversation_participants.last_read_message_id)
+- [x] `read_receipts_enabled` privacy setting added to users table (migration 0004)
+- [x] WebSocket events (receipt:read, receipt:updated, receipt:count)
+- [x] REST endpoints (GET /api/messages/:id/receipts, POST /api/messages/:id/read)
+- [x] 1:1 chat instant receipts (immediate DB write)
+- [x] **Group chat batching** with Redis counters and 10s batch worker
+  - Redis counter: `read_count:{conversation_id}:{message_id}`
+  - Redis queue: `read_receipts:pending`
+  - Batch worker with `@Interval(10000)`
+- [x] **Frontend components:** ReadReceipt, ReadReceiptDetails, ReadReceiptCount
+- [x] **Frontend hooks:** useReadReceipts, useMarkAsRead, useViewportRead
+- [x] **Auto-mark on viewport** with IntersectionObserver (1s debounce)
+- [x] Backend service with Redis integration and in-memory fallback
+- [x] ChatGateway updated to use Redis counters for group broadcasts
 
 ### Backend Scope
 ```typescript
@@ -899,13 +901,15 @@ curl http://localhost:3000/api/messages/{id}/receipts \
 
 ### Definition of Done
 - [x] Read receipts working for 1:1 (instant DB write + real-time notification)
-- [ ] Batched receipts working for groups (with read count) - **PENDING: Redis + batch worker needed**
+- [x] Batched receipts working for groups (with read count) - Redis counter + 10s batch worker
 - [x] Database schema implemented (read_receipts table, lastReadMessageId/lastReadAt)
+- [x] `read_receipts_enabled` privacy setting added to users table
 - [x] WebSocket events: receipt:read, receipt:updated, receipt:count
 - [x] REST endpoint: GET /api/messages/:id/receipts
 - [x] REST endpoint: POST /api/messages/:id/read
-- [x] Backend service implemented
-- [ ] FE indicators working (via WebSocket) - **PENDING: Components not created**
+- [x] Backend service with Redis integration and batch worker
+- [x] FE indicators working (ReadReceipt, ReadReceiptCount, ReadReceiptDetails)
+- [x] Auto-mark on viewport with IntersectionObserver (1s debounce)
 - [x] Swagger docs complete (schemas defined)
 
 ---
@@ -1539,29 +1543,33 @@ This section documents the actual state of implementation versus the documented 
 
 ### ⚠️ Tasks Incorrectly Marked Complete
 
-#### TASK-005: Read Receipts (~60% Complete)
+#### TASK-005: Read Receipts ✅ NOW COMPLETE (2026-02-24)
 **Documented Status:** ✅ Complete  
-**Actual Status:** 🔄 In Progress
+**Actual Status:** ✅ **COMPLETE - All gaps resolved**
 
-**Critical Gaps:**
-1. **Group chat batching not implemented** - All receipts (1:1 and groups) write directly to DB. Missing:
+**Previously Missing - Now Implemented:**
+1. **Group chat batching** - ✅ Implemented with Redis
    - Redis counter `read_count:{conversation_id}:{message_id}`
    - Redis queue `read_receipts:pending`
    - Batch worker with `@Interval(10000)`
-2. **No frontend components:**
-   - `ReadReceipt` (double checkmark) - NOT FOUND
-   - `ReadReceiptDetails` (popup) - NOT FOUND
-   - `ReadReceiptCount` ("Read by N") - NOT FOUND
-3. **No frontend hooks:**
-   - `useReadReceipts(messageId)` - NOT FOUND
-   - `useMarkAsRead(conversationId)` - NOT FOUND
-4. **Privacy setting missing:** `read_receipts_enabled` not in users table (only `presence_enabled` exists)
+2. **Frontend components:** ✅ All created
+   - `ReadReceipt` (double checkmark) - ✅
+   - `ReadReceiptDetails` (popup) - ✅
+   - `ReadReceiptCount` ("Read by N") - ✅
+3. **Frontend hooks:** ✅ All created
+   - `useReadReceipts(messageId)` - ✅
+   - `useMarkAsRead(conversationId)` - ✅
+   - `useViewportRead()` - ✅ (auto-mark with IntersectionObserver)
+4. **Privacy setting:** ✅ Added `read_receipts_enabled` to users table (migration 0004)
 
-**What Works:**
-- Database schema (read_receipts table, conversation_participants tracking)
+**What's Working:**
+- Database schema with privacy settings
 - WebSocket events (receipt:read, receipt:updated, receipt:count)
-- REST endpoints (GET /api/messages/:id/receipts, POST /api/messages/:id/read)
+- REST endpoints
 - 1:1 chat instant receipts
+- Group chat batching with 10s flush interval
+- Frontend components and hooks integrated
+- Auto-mark on viewport with debounce
 
 ---
 
