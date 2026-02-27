@@ -62,8 +62,8 @@ async function bootstrap(): Promise<void> {
     await app.listen(port);
     console.log(`Server running on port ${port}`);
     console.log(`Swagger UI available at http://localhost:${port}/api/docs`);
-  } catch (error: any) {
-    if (error.code === 'EADDRINUSE') {
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'EADDRINUSE') {
       console.error(`Port ${port} is already in use. Please stop the existing server or use a different port.`);
       console.error(`You can change the port by setting the PORT environment variable.`);
       process.exit(1);

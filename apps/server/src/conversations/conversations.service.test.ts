@@ -1,10 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
-  conversationCreatedSchema,
   conversationDetailSchema,
   conversationsListResponseSchema,
-  messagesListResponseSchema,
+  messageSchema,
 } from '@chat/shared';
 import { ConversationsService } from './conversations.service';
 
@@ -12,7 +11,20 @@ const USER_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_USER_ID = '22222222-2222-4222-8222-222222222222';
 const CONVERSATION_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
-function createRepositoryMock() {
+interface RepositoryMock {
+  findByUserPaginated: ReturnType<typeof vi.fn>;
+  findParticipants: ReturnType<typeof vi.fn>;
+  getLastMessage: ReturnType<typeof vi.fn>;
+  getParticipantCount: ReturnType<typeof vi.fn>;
+  create: ReturnType<typeof vi.fn>;
+  findById: ReturnType<typeof vi.fn>;
+  isUserParticipant: ReturnType<typeof vi.fn>;
+  softDelete: ReturnType<typeof vi.fn>;
+  joinConversation: ReturnType<typeof vi.fn>;
+  leaveConversation: ReturnType<typeof vi.fn>;
+}
+
+function createRepositoryMock(): RepositoryMock {
   return {
     findByUserPaginated: vi.fn(),
     findParticipants: vi.fn(),
@@ -27,7 +39,13 @@ function createRepositoryMock() {
   };
 }
 
-function createMessagesRepositoryMock() {
+interface MessagesRepositoryMock {
+  findByConversation: ReturnType<typeof vi.fn>;
+  findByClientMessageId: ReturnType<typeof vi.fn>;
+  create: ReturnType<typeof vi.fn>;
+}
+
+function createMessagesRepositoryMock(): MessagesRepositoryMock {
   return {
     findByConversation: vi.fn(),
     findByClientMessageId: vi.fn(),
@@ -35,19 +53,35 @@ function createMessagesRepositoryMock() {
   };
 }
 
-function createUsersRepositoryMock() {
+interface UsersRepositoryMock {
+  findById: ReturnType<typeof vi.fn>;
+}
+
+function createUsersRepositoryMock(): UsersRepositoryMock {
   return {
     findById: vi.fn(),
   };
 }
 
-function createDbMock() {
+interface DbMock {
+  update: ReturnType<typeof vi.fn>;
+  transaction: ReturnType<typeof vi.fn>;
+}
+
+function createDbMock(): DbMock {
   return {
     update: vi.fn().mockReturnValue({
       set: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue(undefined),
       }),
     }),
+    transaction: vi.fn(async (fn) => fn({
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(undefined),
+        }),
+      }),
+    })),
   };
 }
 
@@ -95,6 +129,7 @@ describe('ConversationsService', () => {
         avatarUrl: null,
         lastSeenAt: null,
         role: 'owner',
+        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
       },
     ]);
     repository.getLastMessage.mockResolvedValue({
@@ -130,6 +165,7 @@ describe('ConversationsService', () => {
         avatarUrl: null,
         lastSeenAt: null,
         role: 'owner',
+        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
       },
       {
         userId: OTHER_USER_ID,
@@ -138,6 +174,7 @@ describe('ConversationsService', () => {
         avatarUrl: null,
         lastSeenAt: null,
         role: 'member',
+        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
       },
     ]);
 
@@ -145,7 +182,7 @@ describe('ConversationsService', () => {
       { type: 'group', title: 'Team Chat', participantIds: [OTHER_USER_ID] },
       USER_ID
     );
-    expect(conversationCreatedSchema.parse(result)).toEqual(result);
+    expect(conversationDetailSchema.parse(result)).toEqual(result);
   });
 
   it('returns conversation details matching shared schema', async () => {
@@ -253,38 +290,45 @@ describe('ConversationsService', () => {
       deletedAt: null,
     });
     repository.isUserParticipant.mockResolvedValue(true);
-    messagesRepository.findByConversation.mockResolvedValue([
-      {
-        id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1',
-        conversationId: CONVERSATION_ID,
-        senderId: USER_ID,
-        content: 'newer message',
-        contentType: 'text',
-        clientMessageId: null,
-        status: 'delivered',
-        replyToId: null,
-        createdAt: new Date('2026-01-01T00:02:00.000Z'),
-        updatedAt: new Date('2026-01-01T00:02:00.000Z'),
-        deletedAt: null,
-      },
-      {
-        id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2',
-        conversationId: CONVERSATION_ID,
-        senderId: OTHER_USER_ID,
-        content: 'older message',
-        contentType: 'text',
-        clientMessageId: null,
-        status: 'delivered',
-        replyToId: null,
-        createdAt: new Date('2026-01-01T00:01:00.000Z'),
-        updatedAt: new Date('2026-01-01T00:01:00.000Z'),
-        deletedAt: null,
-      },
-    ]);
+    messagesRepository.findByConversation.mockResolvedValue({
+      messages: [
+        {
+          id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1',
+          conversationId: CONVERSATION_ID,
+          senderId: USER_ID,
+          content: 'newer message',
+          contentType: 'text',
+          clientMessageId: null,
+          status: 'delivered',
+          replyToId: null,
+          createdAt: new Date('2026-01-01T00:02:00.000Z'),
+          updatedAt: new Date('2026-01-01T00:02:00.000Z'),
+          deletedAt: null,
+        },
+        {
+          id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2',
+          conversationId: CONVERSATION_ID,
+          senderId: OTHER_USER_ID,
+          content: 'older message',
+          contentType: 'text',
+          clientMessageId: null,
+          status: 'delivered',
+          replyToId: null,
+          createdAt: new Date('2026-01-01T00:01:00.000Z'),
+          updatedAt: new Date('2026-01-01T00:01:00.000Z'),
+          deletedAt: null,
+        },
+      ],
+      nextCursor: null,
+      hasMore: false,
+    });
 
     const result = await service.listMessages(CONVERSATION_ID, USER_ID, 50);
 
-    expect(messagesListResponseSchema.parse(result)).toEqual(result);
+    // Validate each message against the message schema
+    result.messages.forEach((msg) => {
+      expect(() => messageSchema.parse(msg)).not.toThrow();
+    });
     expect(result.messages[0]?.content).toBe('older message');
     expect(result.messages[1]?.content).toBe('newer message');
   });

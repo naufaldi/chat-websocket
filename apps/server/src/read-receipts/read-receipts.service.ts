@@ -25,7 +25,7 @@ export class ReadReceiptsService implements OnModuleDestroy {
   private readonly logger = new Logger(ReadReceiptsService.name);
   private redisClient: RedisClient | null = null;
   private inMemoryQueue: PendingReceipt[] = [];
-  private batchTimer: NodeJS.Timeout | null = null;
+  private batchTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
@@ -274,7 +274,22 @@ export class ReadReceiptsService implements OnModuleDestroy {
   /**
    * Get read receipts for a message
    */
-  async getReceiptsForMessage(messageId: string, requesterId: string) {
+  async getReceiptsForMessage(messageId: string, requesterId: string): Promise<{
+    receipts: Array<{
+      messageId: string;
+      userId: string;
+      user: {
+        id: string;
+        username: string;
+        displayName: string | null;
+        avatarUrl: string | null;
+        lastSeenAt: string | null;
+      };
+      readAt: string;
+    }>;
+    totalCount: number;
+    readCount: number;
+  }> {
     // Verify message exists
     const [message] = await this.db
       .select()

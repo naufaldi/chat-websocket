@@ -75,7 +75,12 @@ export class MessagesService {
     await this.messagesRepository.softDelete(messageId);
   }
 
-  async listMessages(conversationId: string, userId: string, limit: number) {
+  async listMessages(
+    conversationId: string,
+    userId: string,
+    limit: number,
+    cursor?: string,
+  ): Promise<{ messages: Message[]; nextCursor: string | null; hasMore: boolean }> {
     // Check if user is a participant
     const isParticipant = await this.conversationsRepository.isUserParticipant(conversationId, userId);
     if (!isParticipant) {
@@ -89,10 +94,12 @@ export class MessagesService {
       });
     }
 
-    const messages = await this.messagesRepository.findByConversation(conversationId, limit);
+    const result = await this.messagesRepository.findByConversation(conversationId, limit, cursor);
 
     return {
-      messages: messages.map((msg) => this.toSharedMessage(msg)),
+      messages: result.messages.map((msg) => this.toSharedMessage(msg)),
+      nextCursor: result.nextCursor,
+      hasMore: result.hasMore,
     };
   }
 

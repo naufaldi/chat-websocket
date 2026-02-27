@@ -165,7 +165,7 @@ describe('Presence REST API', () => {
     it('returns 403 when privacy setting is nobody', () => {
       // This tests the privacy enforcement logic
       const userPrivacySetting = 'nobody';
-      const requesterId = 'different-user-id';
+      const _requesterId = 'different-user-id';
       
       // When privacy is 'nobody', other users should not see the presence
       if (userPrivacySetting === 'nobody') {
@@ -175,7 +175,7 @@ describe('Presence REST API', () => {
 
     it('returns 403 when privacy setting is friends and not friends', () => {
       const userPrivacySetting = 'friends';
-      const requesterId = 'different-user-id';
+      const _requesterId = 'different-user-id';
       
       // When privacy is 'friends', only friends should see presence
       if (userPrivacySetting === 'friends') {

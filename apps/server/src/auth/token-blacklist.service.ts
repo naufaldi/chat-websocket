@@ -8,7 +8,7 @@ interface BlacklistedToken {
 @Injectable()
 export class TokenBlacklistService {
   private readonly blacklist = new Map<string, BlacklistedToken>();
-  private readonly cleanupInterval: NodeJS.Timeout;
+  private readonly cleanupInterval: ReturnType<typeof setInterval>;
 
   constructor() {
     // Clean up expired tokens every 5 minutes

@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { DRIZZLE } from '../database/database.service';
 import type { DrizzleDB } from '../database/database.types';
 import { users } from '@chat/db';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 @Injectable()
 export class PresenceService {
@@ -13,7 +13,12 @@ export class PresenceService {
    * Get user presence status
    * Respects privacy settings
    */
-  async getUserPresence(userId: string, requesterId: string) {
+  async getUserPresence(userId: string, _requesterId: string): Promise<{
+    userId: string;
+    status: 'online' | 'offline';
+    lastActivity: string | null;
+    lastSeenAt: string | null;
+  }> {
     const [user] = await this.db
       .select({
         id: users.id,

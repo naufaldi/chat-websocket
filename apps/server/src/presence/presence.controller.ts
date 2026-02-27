@@ -32,7 +32,12 @@ export class PresenceController {
   async getPresence(
     @Request() req: { user: { userId: string } },
     @Param('userId', ParseUUIDPipe) userId: string,
-  ) {
+  ): Promise<{
+    userId: string;
+    status: 'online' | 'offline';
+    lastActivity: string | null;
+    lastSeenAt: string | null;
+  }> {
     return this.presenceService.getUserPresence(userId, req.user.userId);
   }
 }

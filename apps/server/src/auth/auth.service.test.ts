@@ -6,7 +6,7 @@ import type { JwtService } from '@nestjs/jwt';
 import type { ConfigService } from '@nestjs/config';
 import type { TokenBlacklistService } from './token-blacklist.service';
 import type { LoginDto, RegisterDto } from './dto';
-import type { User } from '../users';
+import type { User } from '@chat/db';
 
 // Mock argon2
 vi.mock('argon2', () => ({
@@ -36,20 +36,16 @@ describe('AuthService', () => {
     avatarUrl: null,
     isActive: true,
     lastSeenAt: new Date(),
+    presenceEnabled: true,
+    presenceSharing: 'everyone',
+    readReceiptsEnabled: true,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
 
-  // Import mocked argon2
-  let mockArgon2: { verify: ReturnType<typeof vi.fn> };
-
   beforeEach(async () => {
     // Reset all mocks
     vi.clearAllMocks();
-
-    // Import the mocked module
-    const argon2Module = await import('argon2');
-    mockArgon2 = argon2Module as unknown as { verify: ReturnType<typeof vi.fn> };
 
     mockUsersRepository = {
       findByEmail: vi.fn(),

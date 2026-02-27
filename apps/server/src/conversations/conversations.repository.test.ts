@@ -5,7 +5,15 @@ import { conversationParticipants } from '@chat/db';
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 const CONV_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
-function createChainableMock<T>(resolveValue: T) {
+interface ChainableMock {
+  from: ReturnType<typeof vi.fn>;
+  where: ReturnType<typeof vi.fn>;
+  orderBy: ReturnType<typeof vi.fn>;
+  limit: ReturnType<typeof vi.fn>;
+  select: ReturnType<typeof vi.fn>;
+}
+
+function createChainableMock<T>(resolveValue: T): ChainableMock {
   const chain = {
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),

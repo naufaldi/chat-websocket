@@ -10,14 +10,19 @@ const CONVERSATION_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const CLIENT_MESSAGE_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const MESSAGE_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
-function createMessagesRepositoryMock() {
+function createMessagesRepositoryMock(): {
+  findByClientMessageId: ReturnType<typeof vi.fn>;
+  create: ReturnType<typeof vi.fn>;
+} {
   return {
     findByClientMessageId: vi.fn(),
     create: vi.fn(),
   };
 }
 
-function createConversationsRepositoryMock() {
+function createConversationsRepositoryMock(): {
+  isUserParticipant: ReturnType<typeof vi.fn>;
+} {
   return {
     isUserParticipant: vi.fn(),
   };

@@ -36,7 +36,22 @@ export class ReadReceiptsController {
   async getReceipts(
     @Request() req: { user: { userId: string } },
     @Param('messageId', ParseUUIDPipe) messageId: string,
-  ) {
+  ): Promise<{
+    receipts: Array<{
+      messageId: string;
+      userId: string;
+      user: {
+        id: string;
+        username: string;
+        displayName: string | null;
+        avatarUrl: string | null;
+        lastSeenAt: string | null;
+      };
+      readAt: string;
+    }>;
+    totalCount: number;
+    readCount: number;
+  }> {
     return this.readReceiptsService.getReceiptsForMessage(messageId, req.user.userId);
   }
 
@@ -53,7 +68,7 @@ export class ReadReceiptsController {
       messageId: string;
       lastReadMessageId?: string;
     },
-  ) {
+  ): Promise<{ message: string }> {
     await this.readReceiptsService.markAsRead(
       req.user.userId,
       data.conversationId,

@@ -55,7 +55,7 @@ const demoUsers: DemoUser[] = [
   },
 ];
 
-async function ensureUser(db: DrizzleDB, input: DemoUser, passwordHash: string) {
+async function ensureUser(db: DrizzleDB, input: DemoUser, passwordHash: string): Promise<string> {
   const [existing] = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
 
   if (existing) {
@@ -94,7 +94,7 @@ async function ensureConversation(
     createdAt: Date;
     updatedAt: Date;
   }
-) {
+): Promise<void> {
   const [existing] = await db
     .select()
     .from(conversations)
@@ -127,7 +127,7 @@ async function ensureConversation(
   });
 }
 
-async function ensureParticipant(db: DrizzleDB, conversationId: string, userId: string, role: 'owner' | 'member') {
+async function ensureParticipant(db: DrizzleDB, conversationId: string, userId: string, role: 'owner' | 'member'): Promise<void> {
   const [existing] = await db
     .select()
     .from(conversationParticipants)
@@ -167,7 +167,7 @@ async function ensureMessage(
     content: string;
     createdAt: Date;
   }
-) {
+): Promise<void> {
   const [existing] = await db.select().from(messages).where(eq(messages.id, data.id)).limit(1);
   if (existing) {
     return;
@@ -186,7 +186,7 @@ async function ensureMessage(
   });
 }
 
-async function seedDemoData() {
+async function seedDemoData(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error('DATABASE_URL is required');

@@ -12,7 +12,7 @@ const OFFLINE_GRACE_MS = 5_000;
 export class PresenceService implements OnModuleDestroy {
   private readonly logger = new Logger(PresenceService.name);
   private redisClient: RedisClient | null = null;
-  private offlineTimers = new Map<string, NodeJS.Timeout>();
+  private offlineTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private memoryPresence = new Map<string, { status: PresenceStatus; expiresAt: number }>();
 
   constructor(private readonly configService: ConfigService) {

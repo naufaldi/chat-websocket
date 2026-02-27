@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ConversationsService } from './conversations.service';
-import { createConversationSchema, sendMessageSchema } from '@chat/shared';
+import { createConversationSchema, sendMessageSchema, type ConversationListItem, type ConversationDetail, type SendMessageResponse, type Message } from '@chat/shared';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
   ApiTags,
@@ -41,7 +41,7 @@ export class ConversationsController {
     @Request() req: { user: { userId: string } },
     @Query('cursor') cursor?: string,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
-  ) {
+  ): Promise<{ conversations: ConversationListItem[]; nextCursor: string | null; hasMore: boolean }> {
     const safeLimit = Math.min(Math.max(1, limit || 20), 100);
     return this.conversationsService.findAllByUser(req.user.userId, cursor, safeLimit);
   }
@@ -57,7 +57,7 @@ export class ConversationsController {
       title?: string;
       participantIds: string[];
     },
-  ) {
+  ): Promise<ConversationDetail> {
     return this.conversationsService.create(data, req.user.userId);
   }
 
@@ -70,7 +70,7 @@ export class ConversationsController {
   async findOne(
     @Request() req: { user: { userId: string } },
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): Promise<ConversationDetail> {
     return this.conversationsService.findById(id, req.user.userId);
   }
 
@@ -85,7 +85,7 @@ export class ConversationsController {
     @Request() req: { user: { userId: string } },
     @Param('id', ParseUUIDPipe) id: string,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
-  ) {
+  ): Promise<{ messages: Message[] }> {
     const safeLimit = Math.min(Math.max(1, limit || 50), 100);
     return this.conversationsService.listMessages(id, req.user.userId, safeLimit);
   }
@@ -107,7 +107,7 @@ export class ConversationsController {
       clientMessageId: string;
       replyToId?: string;
     },
-  ) {
+  ): Promise<SendMessageResponse> {
     return this.conversationsService.sendMessageHttp(id, req.user.userId, data);
   }
 
@@ -120,7 +120,7 @@ export class ConversationsController {
   async delete(
     @Request() req: { user: { userId: string } },
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): Promise<{ message: string }> {
     return this.conversationsService.delete(id, req.user.userId);
   }
 
@@ -132,7 +132,7 @@ export class ConversationsController {
   async join(
     @Request() req: { user: { userId: string } },
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): Promise<{ message: string }> {
     return this.conversationsService.join(id, req.user.userId);
   }
 
@@ -145,7 +145,7 @@ export class ConversationsController {
   async leave(
     @Request() req: { user: { userId: string } },
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): Promise<{ message: string }> {
     return this.conversationsService.leave(id, req.user.userId);
   }
 }

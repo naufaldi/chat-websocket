@@ -98,7 +98,7 @@ export class AuthController {
       }
 
       return this.authService.refreshTokens(payload.sub, payload.email);
-    } catch (error) {
+    } catch (_error) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }

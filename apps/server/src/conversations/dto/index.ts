@@ -1,6 +1,5 @@
 import { createConversationSchema } from '@chat/shared';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
-import { UsePipes } from '@nestjs/common';
 
 export { createConversationSchema };
 

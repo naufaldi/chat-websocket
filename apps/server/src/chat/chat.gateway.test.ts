@@ -14,7 +14,11 @@ const CONVERSATION_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const CLIENT_MESSAGE_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const MESSAGE_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
-function createChatServiceMock() {
+function createChatServiceMock(): {
+  isUserParticipant: ReturnType<typeof vi.fn>;
+  sendMessage: ReturnType<typeof vi.fn>;
+  assertMessageRateLimit: ReturnType<typeof vi.fn>;
+} {
   return {
     isUserParticipant: vi.fn(),
     sendMessage: vi.fn(),
@@ -22,7 +26,10 @@ function createChatServiceMock() {
   };
 }
 
-function createPresenceServiceMock() {
+function createPresenceServiceMock(): {
+  refreshHeartbeat: ReturnType<typeof vi.fn>;
+  scheduleOffline: ReturnType<typeof vi.fn>;
+} {
   return {
     refreshHeartbeat: vi.fn(),
     scheduleOffline: vi.fn(),
@@ -39,7 +46,16 @@ function createReadReceiptsServiceMock(): {
   };
 }
 
-function createClientMock(token = 'token') {
+function createClientMock(token = 'token'): {
+  handshake: { query: { token: string } };
+  data: Record<string, unknown>;
+  emit: ReturnType<typeof vi.fn>;
+  disconnect: ReturnType<typeof vi.fn>;
+  join: ReturnType<typeof vi.fn>;
+  leave: ReturnType<typeof vi.fn>;
+  to: ReturnType<typeof vi.fn>;
+  __roomEmit: ReturnType<typeof vi.fn>;
+} {
   const roomEmit = vi.fn();
   return {
     handshake: { query: { token } },

@@ -1,23 +1,9 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, desc, and, isNull } from 'drizzle-orm';
+import { eq, desc, and, isNull, lt, or } from 'drizzle-orm';
 import { DRIZZLE } from '../database/database.service';
 import type { DrizzleDB } from '../database/database.types';
-import { messages } from '@chat/db';
+import { messages, type Message } from '@chat/db';
 import type { SendMessageInput } from '@chat/shared';
-
-interface Message {
-  id: string;
-  conversationId: string;
-  senderId: string;
-  content: string;
-  contentType: 'text' | 'image' | 'file';
-  clientMessageId: string | null;
-  status: 'sending' | 'delivered' | 'read' | 'error';
-  replyToId: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt: Date | null;
-}
 
 @Injectable()
 export class MessagesRepository {
@@ -35,18 +21,61 @@ export class MessagesRepository {
   async findByConversation(
     conversationId: string,
     limit = 50,
-     
-    _cursor?: string
-  ): Promise<Message[]> {
-    return this.db
+    cursor?: string,
+  ): Promise<{ messages: Message[]; nextCursor: string | null; hasMore: boolean }> {
+    const baseWhere = and(
+      eq(messages.conversationId, conversationId),
+      isNull(messages.deletedAt),
+    );
+
+    let query = this.db
       .select()
       .from(messages)
-      .where(and(
-        eq(messages.conversationId, conversationId),
-        isNull(messages.deletedAt)
-      ))
+      .where(baseWhere)
       .orderBy(desc(messages.createdAt), desc(messages.id))
-      .limit(limit);
+      .limit(limit + 1);
+
+    if (cursor) {
+      try {
+        const decoded: { createdAt: string; id: string } = JSON.parse(
+          Buffer.from(cursor, 'base64url').toString(),
+        );
+        const cursorDate = new Date(decoded.createdAt);
+        const cursorId = decoded.id;
+
+        query = query.where(
+          and(
+            baseWhere,
+            or(
+              lt(messages.createdAt, cursorDate),
+              and(
+                eq(messages.createdAt, cursorDate),
+                lt(messages.id, cursorId),
+              ),
+            ),
+          ),
+        ) as typeof query;
+      } catch {
+        // Invalid cursor, ignore and return from beginning
+      }
+    }
+
+    const results = await query;
+    const hasMore = results.length > limit;
+    const items = hasMore ? results.slice(0, -1) : results;
+
+    let nextCursor: string | null = null;
+    if (hasMore && items.length > 0) {
+      const lastItem = items[items.length - 1];
+      nextCursor = Buffer.from(
+        JSON.stringify({
+          createdAt: lastItem.createdAt.toISOString(),
+          id: lastItem.id,
+        }),
+      ).toString('base64url');
+    }
+
+    return { messages: items, nextCursor, hasMore };
   }
 
   async findByClientMessageId(clientMessageId: string): Promise<Message | null> {
@@ -58,8 +87,12 @@ export class MessagesRepository {
     return message || null;
   }
 
-  async create(data: SendMessageInput & { senderId: string }): Promise<Message> {
-    const [message] = await this.db
+  async create(
+    data: SendMessageInput & { senderId: string },
+    tx?: DrizzleDB,
+  ): Promise<Message> {
+    const db = tx || this.db;
+    const [message] = await db
       .insert(messages)
       .values({
         conversationId: data.conversationId,

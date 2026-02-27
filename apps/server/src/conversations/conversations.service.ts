@@ -2,7 +2,7 @@ import { Inject, Injectable, NotFoundException, ForbiddenException } from '@nest
 import { ConversationsRepository } from './conversations.repository';
 import { MessagesRepository } from '../messages/messages.repository';
 import { UsersRepository } from '../users/users.repository';
-import type { CreateConversationInput, SendMessageResponse } from '@chat/shared';
+import type { CreateConversationInput, SendMessageResponse, ConversationListItem, ConversationDetail, Message } from '@chat/shared';
 import { conversations } from '@chat/db';
 import { eq } from 'drizzle-orm';
 import { DRIZZLE } from '../database/database.service';
@@ -21,7 +21,7 @@ export class ConversationsService {
     userId: string,
     cursor: string | undefined,
     limit: number,
-  ) {
+  ): Promise<{ conversations: ConversationListItem[]; nextCursor: string | null; hasMore: boolean }> {
     const { conversations, nextCursor } = await this.repository.findByUserPaginated(
       userId,
       cursor,
@@ -71,16 +71,34 @@ export class ConversationsService {
     };
   }
 
-  async create(data: CreateConversationInput, userId: string) {
+  async create(data: CreateConversationInput, userId: string): Promise<ConversationDetail> {
     const conversation = await this.repository.create(data, userId);
     const participants = await this.repository.findParticipants(conversation.id);
+
+    const createdByParticipant = participants.find((p) => p.userId === conversation.createdBy);
+    if (!createdByParticipant) {
+      throw new NotFoundException({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Conversation creator not found',
+          retryable: false,
+          traceId: crypto.randomUUID(),
+        },
+      });
+    }
 
     return {
       id: conversation.id,
       type: conversation.type,
       title: conversation.title,
       avatarUrl: conversation.avatarUrl,
-      createdBy: conversation.createdBy,
+      createdBy: {
+        id: createdByParticipant.userId,
+        username: createdByParticipant.username,
+        displayName: createdByParticipant.displayName,
+        avatarUrl: createdByParticipant.avatarUrl,
+        lastSeenAt: createdByParticipant.lastSeenAt?.toISOString() ?? null,
+      },
       createdAt: conversation.createdAt.toISOString(),
       updatedAt: conversation.updatedAt.toISOString(),
       deletedAt: conversation.deletedAt?.toISOString() ?? null,
@@ -89,13 +107,16 @@ export class ConversationsService {
           id: p.userId,
           username: p.username,
           displayName: p.displayName,
+          avatarUrl: p.avatarUrl,
+          lastSeenAt: p.lastSeenAt?.toISOString() ?? null,
         },
         role: p.role,
+        joinedAt: p.joinedAt.toISOString(),
       })),
     };
   }
 
-  async listMessages(conversationId: string, userId: string, limit: number) {
+  async listMessages(conversationId: string, userId: string, limit: number): Promise<{ messages: Message[] }> {
     const conversation = await this.repository.findById(conversationId);
 
     if (!conversation) {
@@ -121,10 +142,10 @@ export class ConversationsService {
       });
     }
 
-    const messages = await this.messagesRepository.findByConversation(conversationId, limit);
+    const result = await this.messagesRepository.findByConversation(conversationId, limit);
 
     return {
-      messages: messages
+      messages: result.messages
         .slice()
         .reverse()
         .map((message) => ({
@@ -143,7 +164,7 @@ export class ConversationsService {
     };
   }
 
-  async findById(conversationId: string, userId: string) {
+  async findById(conversationId: string, userId: string): Promise<ConversationDetail> {
     const conversation = await this.repository.findById(conversationId);
 
     if (!conversation) {
@@ -212,7 +233,7 @@ export class ConversationsService {
     };
   }
 
-  async delete(conversationId: string, userId: string) {
+  async delete(conversationId: string, userId: string): Promise<{ message: string }> {
     const conversation = await this.repository.findById(conversationId);
 
     if (!conversation) {
@@ -243,7 +264,7 @@ export class ConversationsService {
     return { message: 'Conversation deleted successfully' };
   }
 
-  async join(conversationId: string, userId: string) {
+  async join(conversationId: string, userId: string): Promise<{ message: string }> {
     const conversation = await this.repository.findById(conversationId);
 
     if (!conversation) {
@@ -267,7 +288,7 @@ export class ConversationsService {
     return { message: 'Joined conversation successfully' };
   }
 
-  async leave(conversationId: string, userId: string) {
+  async leave(conversationId: string, userId: string): Promise<{ message: string }> {
     const conversation = await this.repository.findById(conversationId);
 
     if (!conversation) {
@@ -371,19 +392,27 @@ export class ConversationsService {
       };
     }
 
-    const message = await this.messagesRepository.create({
-      conversationId,
-      senderId,
-      content: data.content,
-      contentType: data.contentType,
-      clientMessageId: data.clientMessageId,
-      replyToId: data.replyToId,
-    });
+    // Wrap message creation and conversation update in a transaction
+    const message = await this.db.transaction(async (tx) => {
+      const newMessage = await this.messagesRepository.create(
+        {
+          conversationId,
+          senderId,
+          content: data.content,
+          contentType: data.contentType,
+          clientMessageId: data.clientMessageId,
+          replyToId: data.replyToId,
+        },
+        tx,
+      );
 
-    await this.db
-      .update(conversations)
-      .set({ updatedAt: new Date() })
-      .where(eq(conversations.id, conversationId));
+      await tx
+        .update(conversations)
+        .set({ updatedAt: new Date() })
+        .where(eq(conversations.id, conversationId));
+
+      return newMessage;
+    });
 
     const sender = await this.usersRepository.findById(senderId);
 

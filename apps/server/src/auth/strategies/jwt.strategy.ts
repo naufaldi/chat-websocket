@@ -32,7 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   // Allow refresh endpoint to accept expired tokens
-  async validate(payload: JwtPayload, done: (err: Error | null, user?: UserValidateResponse) => void): Promise<UserValidateResponse> {
+  async validate(payload: JwtPayload, _done: (err: Error | null, user?: UserValidateResponse) => void): Promise<UserValidateResponse> {
     // Check if token is blacklisted
     if (payload.jti && this.tokenBlacklistService.isBlacklisted(payload.jti)) {
       throw new UnauthorizedException('Token has been revoked');

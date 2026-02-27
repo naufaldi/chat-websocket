@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, desc, and, inArray, isNull, lt, or, asc, sql } from 'drizzle-orm';
+import { eq, desc, and, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import { DRIZZLE } from '../database/database.service';
 import type { DrizzleDB } from '../database/database.types';
 import { conversations, conversationParticipants, users, messages } from '@chat/db';
@@ -160,7 +160,18 @@ export class ConversationsRepository {
     return { conversations: items, nextCursor };
   }
 
-  async findParticipants(conversationId: string) {
+  async findParticipants(conversationId: string): Promise<Array<{
+    id: string;
+    conversationId: string;
+    userId: string;
+    role: 'owner' | 'admin' | 'member';
+    joinedAt: Date;
+    email: string;
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    lastSeenAt: Date | null;
+  }>> {
     return this.db
       .select({
         id: conversationParticipants.id,
@@ -217,7 +228,7 @@ export class ConversationsRepository {
     return result[0]?.count ?? 0;
   }
 
-  async getLastMessage(conversationId: string) {
+  async getLastMessage(conversationId: string): Promise<{ id: string; content: string; senderId: string; createdAt: Date } | null> {
     const [message] = await this.db
       .select({
         id: messages.id,

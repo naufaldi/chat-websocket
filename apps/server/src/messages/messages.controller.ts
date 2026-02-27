@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MessagesService } from './messages.service';
-import { sendMessageSchema } from '@chat/shared';
+import { sendMessageSchema, type Message } from '@chat/shared';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
   ApiTags,
@@ -36,16 +36,18 @@ export class MessagesController {
   @ApiOperation({ summary: 'List messages in a conversation' })
   @ApiParam({ name: 'conversationId', description: 'Conversation UUID', required: true })
   @ApiQuery({ name: 'limit', required: false, description: 'Page size (default: 50, max: 100)' })
-  @ApiResponse({ status: 200, description: 'Conversation messages' })
+  @ApiQuery({ name: 'cursor', required: false, description: 'Pagination cursor (opaque string)' })
+  @ApiResponse({ status: 200, description: 'Conversation messages with pagination' })
   @ApiResponse({ status: 403, description: 'Not a participant' })
   @ApiResponse({ status: 404, description: 'Conversation not found' })
   async list(
     @Request() req: { user: { userId: string } },
     @Param('conversationId', ParseUUIDPipe) conversationId: string,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
-  ) {
+    @Query('cursor') cursor?: string,
+  ): Promise<{ messages: Message[]; nextCursor: string | null; hasMore: boolean }> {
     const safeLimit = Math.min(Math.max(1, limit || 50), 100);
-    return this.messagesService.listMessages(conversationId, req.user.userId, safeLimit);
+    return this.messagesService.listMessages(conversationId, req.user.userId, safeLimit, cursor);
   }
 
   @Post()
@@ -63,7 +65,7 @@ export class MessagesController {
       clientMessageId: string;
       replyToId?: string;
     },
-  ) {
+  ): Promise<Message> {
     return this.messagesService.sendMessage(req.user.userId, conversationId, {
       ...data,
       conversationId,
@@ -81,7 +83,7 @@ export class MessagesController {
     @Request() req: { user: { userId: string } },
     @Param('conversationId', ParseUUIDPipe) conversationId: string,
     @Param('messageId', ParseUUIDPipe) messageId: string,
-  ) {
+  ): Promise<{ message: string }> {
     await this.messagesService.deleteMessage(messageId, req.user.userId, conversationId);
     return { message: 'Message deleted successfully' };
   }

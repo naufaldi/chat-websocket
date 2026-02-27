@@ -6,10 +6,9 @@
  * 
  * Run: bun test src/socket-integration.test.ts
  */
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   clientToServerEventSchemas,
-  serverToClientEventSchemas,
   messageSendEventSchema,
   subscribeEventSchema,
   typingStartEventSchema,
@@ -418,7 +417,7 @@ describe('Real-World Event Flow', () => {
     const conversationId = '123e4567-e89b-12d3-a456-426614174000';
 
     // Typing started
-    const typingStart = typingStartEventSchema.parse({ conversationId });
+    const _typingStart = typingStartEventSchema.parse({ conversationId });
     const typingStarted = typingStartedEventSchema.parse({
       conversationId,
       userId,
@@ -428,7 +427,7 @@ describe('Real-World Event Flow', () => {
     expect(typingStarted.userId).toBe(userId);
 
     // Typing stopped
-    const typingStop = clientToServerEventSchemas['typing:stop'].parse({ conversationId });
+    const _typingStop = clientToServerEventSchemas['typing:stop'].parse({ conversationId });
     const typingStopped = typingStoppedEventSchema.parse({
       conversationId,
       userId,
