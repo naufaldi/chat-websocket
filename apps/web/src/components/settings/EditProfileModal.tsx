@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { X, User, Camera, AlertCircle } from 'lucide-react';
+import { X, User, AlertCircle } from 'lucide-react';
 import {
   useSettings,
   useUpdateProfileSettings,
@@ -8,6 +8,7 @@ import {
 } from '@/hooks/useSettings';
 import { profileSettingsSchema } from '@chat/shared/schemas/settings';
 import type { UpdateProfileSettings } from '@chat/shared/schemas/settings';
+import { AvatarPicker } from './AvatarPicker';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -126,18 +127,6 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
     });
   };
 
-  const handleAvatarChange = () => {
-    const url = prompt('Enter avatar URL (or leave empty to remove):', avatarUrl ?? '');
-    if (url !== null) {
-      const trimmed = url.trim();
-      setAvatarUrl(trimmed || null);
-      // Clear avatar URL error when user changes it
-      if (errors.avatarUrl) {
-        setErrors((prev) => ({ ...prev, avatarUrl: undefined }));
-      }
-    }
-  };
-
   const handleClose = () => {
     if (!updateProfile.isPending) {
       onClose();
@@ -230,38 +219,19 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {/* Avatar Section */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#3390EC] to-[#5c9ce6] flex items-center justify-center text-white text-3xl font-medium overflow-hidden">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      // Hide broken image and show fallback
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <User className="w-12 h-12" />
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={handleAvatarChange}
-                disabled={updateProfile.isPending}
-                className="absolute bottom-0 right-0 p-2 bg-gray-800 text-white rounded-full hover:bg-gray-700 transition-colors disabled:opacity-50"
-                aria-label="Change avatar"
-              >
-                <Camera className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-sm text-gray-500">Tap to change photo</p>
-            {errors.avatarUrl && (
-              <p className="text-xs text-red-500">{errors.avatarUrl}</p>
-            )}
-          </div>
+          <AvatarPicker
+            value={avatarUrl}
+            onChange={(newValue) => {
+              setAvatarUrl(newValue);
+              if (errors.avatarUrl) {
+                setErrors((prev) => ({ ...prev, avatarUrl: undefined }));
+              }
+            }}
+            disabled={updateProfile.isPending}
+          />
+          {errors.avatarUrl && (
+            <p className="text-xs text-red-500 text-center">{errors.avatarUrl}</p>
+          )}
 
           {/* Display Name */}
           <div>
