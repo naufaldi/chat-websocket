@@ -2,7 +2,9 @@ import { useState, type FormEvent } from 'react';
 import { Paperclip, Smile, Mic, Send } from 'lucide-react';
 
 interface MessageInputProps {
+   
   onSend: (message: string) => void;
+   
   onTextChange?: (text: string) => void;
 }
 

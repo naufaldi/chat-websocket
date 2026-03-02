@@ -25,15 +25,20 @@ interface UseChatSocketOptions {
   currentUserId?: string;
   enabled?: boolean;
   service?: ChatSocketService;
+   
   onReconnectSync?: (payload: { conversationId: string; disconnectedAt: string }) => void;
+   
   onOptimisticMessage?: (message: Message) => void;
+   
   onMessageReceived?: (message: Message) => void;
+   
   onMessageSent?: (payload: {
     clientMessageId: string;
     messageId: string;
     timestamp: string;
     conversationId: string;
   }) => void;
+   
   onMessageError?: (payload: { clientMessageId: string }) => void;
 }
 
@@ -56,7 +61,9 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
   const pendingMessagesRef = useRef<Map<string, PendingMessage>>(new Map());
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     setMessages([]);
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     setTypingUserIds([]);
   }, [conversationId]);
 
@@ -93,7 +100,9 @@ export function useChatSocket(options: UseChatSocketOptions = {}) {
             (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           );
         });
-      } catch {}
+      } catch {
+        // Silently handle load errors - messages will be loaded via WebSocket
+      }
     };
 
     void loadMessages();

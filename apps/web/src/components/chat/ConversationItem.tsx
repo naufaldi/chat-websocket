@@ -8,7 +8,9 @@ interface ConversationItemProps {
   conversation: ConversationListItem;
   isActive: boolean;
   onClick: () => void;
+   
   onLeave?: (id: string) => void;
+   
   onDelete?: (id: string) => void;
 }
 

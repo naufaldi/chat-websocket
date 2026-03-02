@@ -1,10 +1,26 @@
+import * as React from 'react';
 import { render, screen } from '@testing-library/react';
 import { format } from 'date-fns';
 import { describe, expect, it } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { MessageStatus } from '@chat/shared/schemas/message';
 import { MessageBubble } from './MessageBubble';
 
 const TIMESTAMP = '2026-01-05T13:52:00.000Z';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: false },
+  },
+});
+
+function Wrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  );
+}
 
 function renderSentBubble(status: MessageStatus) {
   return render(
@@ -13,7 +29,8 @@ function renderSentBubble(status: MessageStatus) {
       timestamp={TIMESTAMP}
       isSent={true}
       status={status}
-    />
+    />,
+    { wrapper: Wrapper }
   );
 }
 
@@ -49,7 +66,8 @@ describe('MessageBubble', () => {
         timestamp={TIMESTAMP}
         isSent={false}
         status="read"
-      />
+      />,
+      { wrapper: Wrapper }
     );
 
     expect(screen.queryByLabelText('Message sent')).not.toBeInTheDocument();

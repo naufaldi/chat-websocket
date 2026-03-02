@@ -195,8 +195,10 @@ export function HomePage() {
     showCreateModal ? contactSearchQuery : ''
   );
 
-  const { status: connectionStatus, isConnected } = useSocket();
-  const { messages, typingUserIds, sendMessage } = useChatSocket({
+  const { status: _connectionStatus, isConnected } = useSocket();
+  void _connectionStatus; // Will be used for connection status UI indicator
+   
+  const { messages: _messages, typingUserIds: _typingUserIds, sendMessage: _sendMessage } = useChatSocket({
     conversationId: selectedId,
     currentUserId: user?.id,
     enabled: isConnected,

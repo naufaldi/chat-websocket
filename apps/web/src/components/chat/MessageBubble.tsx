@@ -14,7 +14,9 @@ interface MessageBubbleProps {
   messageId?: string;
   clientMessageId?: string;
   conversationId?: string;
+   
   onDelete?: (messageId: string) => void;
+   
   onRetry?: (clientMessageId: string) => boolean;
   isGroup?: boolean;
 }

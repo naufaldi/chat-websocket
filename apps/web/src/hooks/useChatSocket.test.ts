@@ -20,6 +20,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 function createMockService() {
+   
   const handlers = new Map<string, Set<(payload: unknown) => void>>();
 
   return {
@@ -29,6 +30,7 @@ function createMockService() {
     typingStart: vi.fn(),
     typingStop: vi.fn(),
     onConnectionStatusChange: vi.fn(() => () => undefined),
+     
     on: vi.fn((event: string, handler: (payload: unknown) => void) => {
       if (!handlers.has(event)) {
         handlers.set(event, new Set());

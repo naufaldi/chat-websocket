@@ -133,7 +133,8 @@ interface ReadReceiptCountProps {
 }
 
 export function ReadReceiptCount({ readCount, totalCount, onClick, className }: ReadReceiptCountProps) {
-  const [showDetails, setShowDetails] = useState(false);
+   
+  const [, setShowDetails] = useState(false);
 
   if (totalCount <= 2) {
     // For 1:1 chats, just show the double checkmark

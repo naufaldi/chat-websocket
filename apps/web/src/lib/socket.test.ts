@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { serverToClientEventSchemas } from '@chat/shared/schemas/socket';
 import { createChatSocketService } from './socket';
 
+ 
 type EventHandler = (payload?: unknown) => void;
 
 function createMockSocket() {

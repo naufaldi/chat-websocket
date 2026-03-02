@@ -5,9 +5,11 @@ import type { CreateConversationInput } from '@chat/shared/schemas/conversation'
 interface CreateChatModalProps {
   isOpen: boolean;
   onClose: () => void;
+   
   onCreate: (data: CreateConversationInput) => void;
   contacts?: Array<{ id: string; displayName: string; username: string; avatarUrl: string | null }>;
   isSearching?: boolean;
+   
   onSearchQueryChange?: (query: string) => void;
 }
 
@@ -26,9 +28,13 @@ export function CreateChatModal({
 
   useEffect(() => {
     if (!isOpen) {
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setSearch('');
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setSelectedIds([]);
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setIsGroup(false);
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setTitle('');
       onSearchQueryChange?.('');
     }

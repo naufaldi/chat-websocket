@@ -61,3 +61,14 @@ Object.defineProperty(window, 'scrollTo', {
   writable: true,
   value: vi.fn(),
 });
+
+// Mock IntersectionObserver
+class IntersectionObserverMock {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+}
+Object.defineProperty(window, 'IntersectionObserver', {
+  writable: true,
+  value: IntersectionObserverMock,
+});

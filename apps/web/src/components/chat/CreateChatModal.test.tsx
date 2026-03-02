@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CreateChatModal } from './CreateChatModal';
 
 // Test the component logic without React rendering

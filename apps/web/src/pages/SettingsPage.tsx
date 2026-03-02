@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -15,7 +16,7 @@ import {
   Globe
 } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useUpdateProfile, useUpdatePrivacy } from '@/hooks/useUpdateProfile';
+import { useUpdatePrivacy } from '@/hooks/useUpdateProfile';
 import { EditProfileModal } from '@/components/settings/EditProfileModal';
 
 interface SettingItemProps {

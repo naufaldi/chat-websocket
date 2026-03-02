@@ -235,7 +235,7 @@ export function ChatPage() {
             name={getDisplayName(selected)}
             presence={otherUserPresence}
             participantCount={selected.participants.length}
-            connectionStatus={<ConnectionStatus status={connectionStatus} />}
+            connectionStatus={<ConnectionStatus status={connectionStatus ?? 'disconnected'} />}
           />
           <MessageList
             messages={infiniteMessages}

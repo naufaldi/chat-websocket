@@ -6,3 +6,4 @@ export * from './schemas/conversation.js';
 export * from './schemas/socket.js';
 export * from './schemas/read-receipt.js';
 export * from './schemas/presence.js';
+export * from './schemas/settings.js';

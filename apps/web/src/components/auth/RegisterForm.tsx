@@ -44,6 +44,7 @@ export function RegisterForm() {
     try {
       // Extract relevant fields for registration
       const { confirmPassword, ...registerData } = data;
+      void confirmPassword; // Used for form validation only, not sent to API
       await register.mutateAsync(registerData);
       navigate('/');
     } catch (err: unknown) {

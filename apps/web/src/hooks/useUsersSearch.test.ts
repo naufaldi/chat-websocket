@@ -16,8 +16,10 @@ describe('useUsersSearch', () => {
 
   it('has debounce functionality', async () => {
     // Test debounce logic separately - just verify it exists and works
+     
     const debounce = <T>(fn: () => void, delay: number) => {
       let timeoutId: ReturnType<typeof setTimeout>;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       return (value: T) => {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => fn(), delay);

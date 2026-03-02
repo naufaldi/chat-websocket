@@ -171,7 +171,7 @@ Backend persistence, API endpoints, security, and behavior enforcement.
 - `apps/server/src/auth/auth.service.ts`
 - `apps/server/src/auth/dto/change-password.dto.ts`
 - `apps/server/src/auth/*.spec.ts`
-- Optional compatibility layer: `apps/server/src/users/*`
+- Optional compatibility layer: `apps/server/src/users/`*
 
 ### User Stories Covered
 

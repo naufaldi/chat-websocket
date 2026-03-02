@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-export const presenceSharingSchema = z.enum(['everyone', 'friends', 'nobody']);
+/**
+ * Presence sharing and profile photo visibility use the same enum values.
+ * RFC alignment: 'contacts' instead of 'friends' for consistency.
+ */
+export const presenceSharingSchema = z.enum(['everyone', 'contacts', 'nobody']);
 
 // REST Response
 export const userPresenceResponseSchema = z.object({

@@ -38,12 +38,15 @@ export const updateProfileSchema = z.object({
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
-// Privacy settings schema
-export const privacySettingsSchema = z.object({
-  presenceSharing: z.enum(['everyone', 'friends', 'nobody']),
+// Note: Full privacy settings (with presenceEnabled, readReceiptsEnabled)
+// is defined in settings.ts per RFC. This minimal schema is kept for backward
+// compatibility with existing code that only needs presenceSharing.
+// Deprecated: Use privacySettingsSchema from settings.ts for new code.
+export const legacyPrivacySettingsSchema = z.object({
+  presenceSharing: z.enum(['everyone', 'contacts', 'nobody']),
 });
 
-export type PrivacySettings = z.infer<typeof privacySettingsSchema>;
+export type LegacyPrivacySettings = z.infer<typeof legacyPrivacySettingsSchema>;
 
 export type User = z.infer<typeof userSchema>;
 export type UserPublic = z.infer<typeof userPublicSchema>;

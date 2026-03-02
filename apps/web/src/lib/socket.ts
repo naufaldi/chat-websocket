@@ -31,18 +31,23 @@ type DefaultServerPayload = Record<string, unknown>;
 
 export type SocketConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
+ 
 type EventHandler = (payload?: unknown) => void;
 
 interface SocketLike {
   connected: boolean;
   connect: () => void;
   disconnect: () => void;
+   
   emit: (event: string, payload: unknown) => void;
+   
   on: (event: string, handler: EventHandler) => void;
+   
   off: (event: string, handler?: EventHandler) => void;
 }
 
 interface CreateChatSocketServiceOptions {
+   
   createSocket?: (url: string, token: string) => SocketLike;
   getToken?: () => string | null;
   namespaceUrl?: string;
@@ -69,11 +74,13 @@ function createDefaultSocket(url: string, token: string): SocketLike {
 }
 
 export class ChatSocketService {
+   
   private readonly createSocket: (url: string, token: string) => SocketLike;
   private readonly getToken: () => string | null;
   private readonly namespaceUrl: string;
   private socket: SocketLike | null = null;
   private status: SocketConnectionStatus = 'disconnected';
+   
   private statusListeners = new Set<(status: SocketConnectionStatus) => void>();
   private serverListeners = new Map<ServerEventName, Set<EventHandler>>();
   private heartbeatIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -92,6 +99,7 @@ export class ChatSocketService {
     return this.status === 'connected';
   }
 
+   
   onConnectionStatusChange(listener: (status: SocketConnectionStatus) => void): () => void {
     this.statusListeners.add(listener);
     listener(this.status);
@@ -165,7 +173,9 @@ export class ChatSocketService {
   }
 
   on<E extends ServerEventName>(
+     
     event: E,
+     
     handler: (payload: E extends keyof ServerEventPayloadMap ? ServerEventPayloadMap[E] : DefaultServerPayload) => void
   ): () => void {
     if (!this.socket) {

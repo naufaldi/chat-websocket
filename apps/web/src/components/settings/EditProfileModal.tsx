@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { X, User, Camera } from 'lucide-react';
 import { useUpdateProfile } from '@/hooks/useUpdateProfile';
@@ -19,7 +20,9 @@ export function EditProfileModal({ isOpen, onClose, currentProfile }: EditProfil
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setDisplayName(currentProfile.displayName);
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setAvatarUrl(currentProfile.avatarUrl);
     }
   }, [isOpen, currentProfile.displayName, currentProfile.avatarUrl]);

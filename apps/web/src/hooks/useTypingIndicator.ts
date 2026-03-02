@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef } from 'react';
 
 interface UseTypingIndicatorOptions {
   conversationId?: string;
+   
   onTypingStart: (conversationId: string) => void;
+   
   onTypingStop: (conversationId: string) => void;
   delayMs?: number;
 }

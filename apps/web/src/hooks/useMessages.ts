@@ -20,7 +20,7 @@ export function useMessages({ conversationId }: UseMessagesOptions = {}) {
       if (!conversationId) return Promise.resolve({ messages: [] });
       return conversationsApi.listMessages(conversationId, pageParam);
     },
-    getNextPageParam: (lastPage, allPages) => {
+    getNextPageParam: (lastPage, _allPages) => {
       if (lastPage.messages.length === 0) return undefined;
       const oldestMessage = lastPage.messages[0];
       return oldestMessage.id;

@@ -10,8 +10,8 @@ interface MessageListProps {
   hasNextPage?: boolean;
   isFetchingNextPage: boolean;
   fetchNextPage: () => void;
-  onDeleteMessage?: (messageId: string) => void;  // eslint-disable-line no-unused-vars
-  onRetryMessage?: (clientMessageId: string) => boolean;  // eslint-disable-line no-unused-vars
+  onDeleteMessage?: (messageId: string) => void;   
+  onRetryMessage?: (clientMessageId: string) => boolean;   
 }
 
 export function MessageList({

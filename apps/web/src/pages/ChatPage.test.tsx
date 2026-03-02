@@ -87,6 +87,8 @@ vi.mock('@/hooks/useUsersSearch', () => ({
   useUsersSearch: () => ({ data: { users: [] }, isLoading: false }),
 }));
 
+import * as React from 'react';
+
 vi.mock('@/components/chat/ChatLayout', () => ({
   ChatLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));

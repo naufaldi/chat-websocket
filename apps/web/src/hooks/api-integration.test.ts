@@ -5,8 +5,7 @@
  * 
  * Run: bun test src/hooks/api-integration.test.ts
  */
-import { describe, expect, it, vi } from 'vitest';
-import React from 'react';
+import { describe, expect, it } from 'vitest';
 
 // Test structure validation - verify the hooks and API exist
 describe('API Integration: Module Structure', () => {

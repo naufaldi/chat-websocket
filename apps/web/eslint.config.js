@@ -10,6 +10,7 @@ export default [
   eslint.configs.recommended,
   {
     files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -31,6 +32,7 @@ export default [
     },
     rules: {
       // TypeScript
+      'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
@@ -49,6 +51,36 @@ export default [
 
       // React Hooks Extra - Additional strict rules
       'react-hooks-extra/no-direct-set-state-in-use-effect': 'error',
+    },
+  },
+  // Test files - without type-aware linting
+  {
+    files: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    languageOptions: {
+      parser: tsparser,
+      parserOptions: {
+        ecmaVersion: 2021,
+        sourceType: 'module',
+        ecmaFeatures: { jsx: true },
+      },
+      globals: { ...globals.browser, ...globals.node },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
+      react,
+      'react-hooks': reactHooks,
+    },
+    rules: {
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
+      '@typescript-eslint/no-explicit-any': 'warn',
+      'react/jsx-uses-react': 'error',
+      'react/jsx-uses-vars': 'error',
+      'react/prop-types': 'off',
     },
   },
   {

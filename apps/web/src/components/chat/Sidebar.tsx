@@ -1,4 +1,4 @@
-import { Search, Settings, Menu } from 'lucide-react';
+import { Search, Settings } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ConversationItem } from './ConversationItem';
 import type { ConversationListItem } from '@/types/conversation';
@@ -7,9 +7,12 @@ import { Link } from 'react-router-dom';
 interface SidebarProps {
   conversations: ConversationListItem[];
   selectedId?: string;
+   
   onSelect: (id: string) => void;
   onCreateChat: () => void;
+   
   onLeave?: (id: string) => void;
+   
   onDelete?: (id: string) => void;
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;

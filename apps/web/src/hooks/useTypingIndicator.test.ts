@@ -11,11 +11,13 @@ describe('TypingIndicator', () => {
 describe('Typing debounce logic', () => {
   it('debounce function exists and works', () => {
     // Simple debounce implementation test
-    const debounce = <T extends (...args: any[]) => any>(
-      fn: T, 
+     
+    const debounce = <T extends (...args: unknown[]) => unknown>(
+      fn: T,
       delay: number
     ) => {
       let timeoutId: ReturnType<typeof setTimeout>;
+       
       return (...args: Parameters<T>) => {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => fn(...args), delay);

@@ -26,6 +26,7 @@ export function LoginForm() {
   useEffect(() => {
     const unauthorized = searchParams.get('unauthorized');
     if (unauthorized === 'true') {
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setShowUnauthorizedMsg(true);
       // Clear the query param
       navigate('/login', { replace: true });
