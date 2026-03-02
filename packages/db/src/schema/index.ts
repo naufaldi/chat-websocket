@@ -16,7 +16,7 @@ export const conversationTypeEnum = pgEnum('conversation_type', ['direct', 'grou
 export const contentTypeEnum = pgEnum('content_type', ['text', 'image', 'file']);
 export const messageStatusEnum = pgEnum('message_status', ['sending', 'delivered', 'read', 'error']);
 export const participantRoleEnum = pgEnum('participant_role', ['owner', 'admin', 'member']);
-export const presenceSharingEnum = pgEnum('presence_sharing', ['everyone', 'friends', 'nobody']);
+export const presenceSharingEnum = pgEnum('presence_sharing', ['everyone', 'contacts', 'nobody']);
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -32,6 +32,10 @@ export const users = pgTable('users', {
   presenceSharing: presenceSharingEnum('presence_sharing').default('everyone').notNull(),
   // Read receipt settings
   readReceiptsEnabled: boolean('read_receipts_enabled').default(true).notNull(),
+  // Profile settings
+  profilePhotoVisibility: presenceSharingEnum('profile_photo_visibility').default('everyone').notNull(),
+  // Notification settings
+  pushNotificationsEnabled: boolean('push_notifications_enabled').default(true).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
@@ -92,4 +96,17 @@ export const messages = pgTable('messages', {
 }, (table) => ({
   clientIdIdx: uniqueIndex('idx_messages_client_id').on(table.clientMessageId),
   convCreatedIdx: index('idx_messages_conversation_created').on(table.conversationId, table.createdAt.desc()),
+}));
+
+// Push subscriptions table for web push notifications
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  endpoint: varchar('endpoint', { length: 500 }).notNull(),
+  p256dhKey: varchar('p256dh_key', { length: 255 }).notNull(),
+  authKey: varchar('auth_key', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('idx_push_subscriptions_user').on(table.userId),
+  endpointIdx: uniqueIndex('idx_push_subscriptions_endpoint').on(table.endpoint),
 }));

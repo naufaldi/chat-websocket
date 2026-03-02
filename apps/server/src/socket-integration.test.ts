@@ -196,7 +196,7 @@ describe('WebSocket Server -> Client Events', () => {
           code,
         };
         const result = authErrorEventSchema.safeParse(payload);
-        expect(result.success).toBe(true, `Failed for code: ${code}`);
+        expect(result.success).toBe(true);
       });
     });
   });

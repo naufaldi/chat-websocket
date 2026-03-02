@@ -86,15 +86,15 @@ describe('UsersController', () => {
 
   describe('updatePrivacy', () => {
     it('should update privacy via service', async () => {
-      const mockPrivacy = { presenceSharing: 'friends' as const };
+      const mockPrivacy = { presenceSharing: 'contacts' as const };
       vi.mocked(service.updatePrivacy).mockResolvedValue(mockPrivacy);
 
       const result = await controller.updatePrivacy(
         { user: { userId: 'user1' } },
-        { presenceSharing: 'friends' },
+        { presenceSharing: 'contacts' },
       );
 
-      expect(service.updatePrivacy).toHaveBeenCalledWith('user1', { presenceSharing: 'friends' });
+      expect(service.updatePrivacy).toHaveBeenCalledWith('user1', { presenceSharing: 'contacts' });
       expect(result).toEqual(mockPrivacy);
     });
   });

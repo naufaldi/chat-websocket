@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
+import { RegisterDto, LoginDto, AuthResponseDto, ChangePasswordDto } from './dto';
 import { JwtAuthGuard, ThrottlerWithHeadersGuard } from './guards';
 
 interface RefreshResponse {
@@ -134,5 +134,28 @@ export class AuthController {
 
     await this.authService.logout(refreshToken);
     return { message: 'Logged out successfully' };
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard, ThrottlerWithHeadersGuard)
+  @Throttle({ short: { limit: 5, ttl: 900000 } }) // 5 attempts per 15 minutes
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change password', description: 'Change user password with current password verification' })
+  @ApiResponse({ status: 200, description: 'Password changed successfully' })
+  @ApiResponse({ status: 400, description: 'Validation error or new password same as current' })
+  @ApiResponse({ status: 401, description: 'Unauthorized or current password incorrect' })
+  @ApiResponse({ status: 429, description: 'Too many requests - rate limit exceeded' })
+  async changePassword(
+    @Request() req: { user: { userId: string } },
+    @Body() dto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    // Validate that newPassword and confirmPassword match
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new UnauthorizedException('Passwords do not match');
+    }
+
+    await this.authService.changePassword(req.user.userId, dto);
+    return { message: 'Password changed successfully' };
   }
 }

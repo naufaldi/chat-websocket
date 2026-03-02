@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ThrottlerModuleOptions } from '@nestjs/throttler';
+// Note: ThrottlerModuleOptions available from @nestjs/throttler if needed
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 
 describe('Rate Limiting Configuration', () => {
@@ -17,7 +17,7 @@ describe('Rate Limiting Configuration', () => {
 
   it('should have multiple rate limit configurations', () => {
     // Should have configs for: short (auth), default (general), search
-    const configs: ThrottlerModuleOptions['throttlers'] = [
+    const configs = [
       {
         name: 'short',
         ttl: 900000,

@@ -60,26 +60,42 @@ describe('User Profile Schemas', () => {
   });
 
   describe('privacySettingsSchema', () => {
-    it('validates presence sharing set to everyone', () => {
-      const input = { presenceSharing: 'everyone' };
+    it('validates complete privacy settings with presence sharing set to everyone', () => {
+      const input = {
+        presenceEnabled: true,
+        presenceSharing: 'everyone',
+        readReceiptsEnabled: true,
+      };
       const result = privacySettingsSchema.safeParse(input);
       expect(result.success).toBe(true);
     });
 
-    it('validates presence sharing set to friends', () => {
-      const input = { presenceSharing: 'friends' };
+    it('validates complete privacy settings with presence sharing set to contacts', () => {
+      const input = {
+        presenceEnabled: true,
+        presenceSharing: 'contacts',
+        readReceiptsEnabled: true,
+      };
       const result = privacySettingsSchema.safeParse(input);
       expect(result.success).toBe(true);
     });
 
-    it('validates presence sharing set to nobody', () => {
-      const input = { presenceSharing: 'nobody' };
+    it('validates complete privacy settings with presence sharing set to nobody', () => {
+      const input = {
+        presenceEnabled: false,
+        presenceSharing: 'nobody',
+        readReceiptsEnabled: false,
+      };
       const result = privacySettingsSchema.safeParse(input);
       expect(result.success).toBe(true);
     });
 
     it('rejects invalid privacy setting', () => {
-      const input = { presenceSharing: 'invalid' };
+      const input = {
+        presenceEnabled: true,
+        presenceSharing: 'invalid',
+        readReceiptsEnabled: true,
+      };
       const result = privacySettingsSchema.safeParse(input);
       expect(result.success).toBe(false);
     });

@@ -1,7 +1,7 @@
 export * from './schema/index';
 
 // Re-export inferred select types with descriptive names for repository use
-import { messages, conversations, users } from './schema/index';
+import { messages, conversations, users, pushSubscriptions } from './schema/index';
 
 /** Message type as stored in database (with Date objects) */
 export type Message = typeof messages.$inferSelect;
@@ -11,3 +11,6 @@ export type Conversation = typeof conversations.$inferSelect;
 
 /** User type as stored in database (with Date objects) */
 export type User = typeof users.$inferSelect;
+
+/** Push subscription type as stored in database (with Date objects) */
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;

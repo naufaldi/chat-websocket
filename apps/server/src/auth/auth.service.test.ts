@@ -39,6 +39,8 @@ describe('AuthService', () => {
     presenceEnabled: true,
     presenceSharing: 'everyone',
     readReceiptsEnabled: true,
+    profilePhotoVisibility: 'everyone',
+    pushNotificationsEnabled: true,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

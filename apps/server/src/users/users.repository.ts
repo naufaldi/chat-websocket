@@ -143,4 +143,17 @@ export class UsersRepository {
 
     return user ?? null;
   }
+
+  /**
+   * Update user password hash.
+   */
+  async updatePassword(userId: string, passwordHash: string): Promise<void> {
+    await this.db
+      .update(users)
+      .set({
+        passwordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
 }

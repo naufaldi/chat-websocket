@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '@/lib/api';
 import { authKeys } from './useAuth';
-import type { UpdateProfileInput, PrivacySettings, User } from '@chat/shared/schemas/user';
+import type { UpdateProfileInput, User } from '@chat/shared/schemas/user';
+import type { PrivacySettings } from '@chat/shared/schemas/settings';
 
 // Query keys for user settings
 export const userKeys = {

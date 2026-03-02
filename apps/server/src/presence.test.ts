@@ -202,7 +202,7 @@ describe('Presence Status Schema', () => {
     
     statuses.forEach((status) => {
       const parsed = presenceStatusSchema.safeParse(status);
-      expect(parsed.success).toBe(true, `Failed for status: ${status}`);
+      expect(parsed.success).toBe(true);
     });
   });
 

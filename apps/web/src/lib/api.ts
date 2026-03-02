@@ -11,12 +11,31 @@ import type {
   CreateConversationInput,
 } from '@chat/shared/schemas/conversation';
 import { userSearchResponseSchema, userSchema } from '@chat/shared/schemas/user';
-import { privacySettingsSchema } from '@chat/shared/schemas/user';
-import type { UpdateProfileInput, PrivacySettings, User } from '@chat/shared/schemas/user';
+import type { UpdateProfileInput, User } from '@chat/shared/schemas/user';
 import { messagesListResponseSchema, messageSchema } from '@chat/shared/schemas/message';
 import { readReceiptsListResponseSchema } from '@chat/shared/schemas/read-receipt';
 import type { ReadReceiptsListResponse } from '@chat/shared/schemas/read-receipt';
 import type { ConversationsQueryResponse } from '@/types/conversation';
+import {
+  settingsResponseSchema,
+  updateProfileSettingsSchema,
+  updatePrivacySettingsSchema,
+  updateNotificationSettingsSchema,
+  changePasswordSchema,
+  pushSubscriptionSchema,
+  apiErrorResponseSchema,
+  privacySettingsSchema,
+} from '@chat/shared/schemas/settings';
+import type {
+  SettingsResponse,
+  UpdateProfileSettings,
+  UpdatePrivacySettings,
+  UpdateNotificationSettings,
+  ChangePasswordInput,
+  PushSubscriptionInput,
+  ApiErrorResponse,
+  PrivacySettings,
+} from '@chat/shared/schemas/settings';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -208,6 +227,79 @@ export const readReceiptsApi = {
     await api.post(`/messages/${messageId}/read`);
   },
 };
+
+// Settings API functions
+export const settingsApi = {
+  // Get all user settings
+  getSettings: async (): Promise<SettingsResponse> => {
+    const response = await api.get('/settings');
+    return settingsResponseSchema.parse(response.data);
+  },
+
+  // Update profile settings
+  updateProfile: async (data: UpdateProfileSettings): Promise<SettingsResponse> => {
+    // Validate input before sending
+    const parsed = updateProfileSettingsSchema.safeParse(data);
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues.map((e: { message: string }) => e.message).join(', '));
+    }
+    const response = await api.patch('/settings/profile', parsed.data);
+    return settingsResponseSchema.parse(response.data);
+  },
+
+  // Update privacy settings
+  updatePrivacy: async (data: UpdatePrivacySettings): Promise<SettingsResponse> => {
+    const parsed = updatePrivacySettingsSchema.safeParse(data);
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues.map((e: { message: string }) => e.message).join(', '));
+    }
+    const response = await api.patch('/settings/privacy', parsed.data);
+    return settingsResponseSchema.parse(response.data);
+  },
+
+  // Update notification settings
+  updateNotifications: async (data: UpdateNotificationSettings): Promise<SettingsResponse> => {
+    const parsed = updateNotificationSettingsSchema.safeParse(data);
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues.map((e: { message: string }) => e.message).join(', '));
+    }
+    const response = await api.patch('/settings/notifications', parsed.data);
+    return settingsResponseSchema.parse(response.data);
+  },
+
+  // Change password
+  changePassword: async (data: ChangePasswordInput): Promise<void> => {
+    // Validate using the shared schema
+    const parsed = changePasswordSchema.safeParse(data);
+    if (!parsed.success) {
+      // Format validation errors for display
+      const errorMessages = parsed.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+      throw new Error(errorMessages);
+    }
+    await api.post('/auth/change-password', parsed.data);
+  },
+
+  // Subscribe to push notifications
+  subscribePush: async (data: PushSubscriptionInput): Promise<void> => {
+    const parsed = pushSubscriptionSchema.safeParse(data);
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues.map((e: { message: string }) => e.message).join(', '));
+    }
+    await api.post('/settings/push-subscription', parsed.data);
+  },
+};
+
+// Parse API error response using shared schema
+export function parseApiError(error: unknown): ApiErrorResponse | null {
+  const axiosError = error as { response?: { data?: unknown } };
+  if (axiosError.response?.data) {
+    const parsed = apiErrorResponseSchema.safeParse(axiosError.response.data);
+    if (parsed.success) {
+      return parsed.data;
+    }
+  }
+  return null;
+}
 
 // Helper to set auth tokens (access + refresh)
 export const setAuthToken = (accessToken: string, refreshToken: string) => {

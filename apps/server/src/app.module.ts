@@ -13,6 +13,7 @@ import { MessagesModule } from './messages/messages.module';
 import { ReadReceiptsModule } from './read-receipts/read-receipts.module';
 import { PresenceModule } from './presence/presence.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { MetricsModule } from './metrics/metrics.module';
     ReadReceiptsModule,
     PresenceModule,
     MetricsModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}

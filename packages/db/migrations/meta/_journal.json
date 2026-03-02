@@ -36,6 +36,20 @@
       "when": 1771894714592,
       "tag": "0004_smart_mach_iv",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1772413788826,
+      "tag": "0005_quick_piledriver",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1772414138925,
+      "tag": "0006_panoramic_excalibur",
+      "breakpoints": true
     }
   ]
 }

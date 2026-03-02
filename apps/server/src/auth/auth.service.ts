@@ -1,10 +1,10 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
 import { randomUUID } from 'crypto';
 import { UsersRepository } from '../users';
-import { RegisterDto, LoginDto, AuthResponseDto, UserDto } from './dto';
+import { RegisterDto, LoginDto, AuthResponseDto, UserDto, ChangePasswordDto } from './dto';
 import { TokenBlacklistService } from './token-blacklist.service';
 
 interface TokenResponse {
@@ -172,6 +172,41 @@ export class AuthService {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Change user password
+   * @param userId - The user ID
+   * @param dto - Change password data containing current and new password
+   */
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
+    // Find user by ID
+    const user = await this.usersRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await argon2.verify(user.passwordHash, dto.currentPassword);
+    if (!isCurrentPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    // Ensure new password is different from current
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException('New password must be different from current password');
+    }
+
+    // Hash new password with Argon2id using same settings as register
+    const newPasswordHash = await argon2.hash(dto.newPassword, {
+      type: argon2.argon2id,
+      memoryCost: 65536,
+      timeCost: 3,
+      parallelism: 4,
+    });
+
+    // Update password hash in database
+    await this.usersRepository.updatePassword(userId, newPasswordHash);
   }
 
   private async generateTokens(userId: string, email: string): Promise<TokenResponse> {
