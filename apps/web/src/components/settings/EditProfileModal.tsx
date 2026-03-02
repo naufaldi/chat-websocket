@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { X, User, AlertCircle } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import {
   useSettings,
   useUpdateProfileSettings,
