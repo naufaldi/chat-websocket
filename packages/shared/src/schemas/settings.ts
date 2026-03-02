@@ -21,8 +21,9 @@ export const profileSettingsSchema = z.object({
     }),
   avatarUrl: z.string()
     .max(500, 'Avatar URL must be at most 500 characters')
-    .url('Avatar URL must be a valid URL')
-    .nullable(),
+    .regex(/^(https?:\/\/|data:image\/|).*$/, 'Avatar URL must be a valid URL')
+    .nullable()
+    .or(z.literal('')),
   profilePhotoVisibility: profilePhotoVisibilitySchema,
 });
 
