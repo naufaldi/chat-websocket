@@ -141,6 +141,9 @@ export class ChatSocketService {
   }
 
   unsubscribe(conversationId: string): void {
+    if (!this.socket) {
+      return;
+    }
     this.emitValidated('unsubscribe', { conversationId });
   }
 

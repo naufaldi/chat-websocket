@@ -6,7 +6,7 @@
 > **Tech Stack:** NestJS 11.x + Drizzle 0.45.x + PostgreSQL + Redis + Socket.io 4.x + Bun Workspaces  
 > **Frontend:** React 19.x + Vite 7.x + TanStack Query 5.x + Tailwind 4.x  
 > **Documentation:** Swagger/OpenAPI 3.0  
-> **Last Updated:** 2026-02-24 (Living Document - Full Codebase Audit Complete)
+> **Last Updated:** 2026-03-02 (Cross-Stream Integration Complete - Settings Contract Drift Fixed)
 
 ---
 
@@ -1756,6 +1756,62 @@ This section documents the actual state of implementation. Most tasks are now **
 
 ---
 
+#### Settings Module (FEAT-013) - Cross-Stream Integration ✅ COMPLETE (2026-03-02)
+
+**Status:** ✅ **COMPLETE - Contract Drift Fixed, All Integration Tests Pass**
+
+**Implementation Summary:**
+Full settings management system with profile, privacy, notifications, password, and push subscriptions.
+
+**Shared Contracts (packages/shared):**
+- ✅ `profileSettingsSchema` - Display name (trim-aware, max 100), avatar URL validation
+- ✅ `privacySettingsSchema` - Presence enabled, presence sharing, read receipts
+- ✅ `notificationSettingsSchema` - Push notifications toggle
+- ✅ `changePasswordSchema` - Current/new/confirm with password strength rules
+- ✅ `pushSubscriptionSchema` - Web Push subscription (endpoint, p256dhKey, authKey)
+- ✅ `settingsResponseSchema` - Combined response for GET /api/settings
+- ✅ `apiErrorResponseSchema` - Standardized error format
+
+**Backend (apps/server/src/settings):**
+- ✅ `GET /api/settings` - Retrieve all user settings
+- ✅ `PATCH /api/settings/profile` - Update display name, avatar, photo visibility
+- ✅ `PATCH /api/settings/privacy` - Update presence and read receipt settings
+- ✅ `PATCH /api/settings/notifications` - Update push notification preference
+- ✅ `POST /api/settings/push-subscription` - Register Web Push subscription
+- ✅ Rate limiting: 10 requests/min per endpoint via `@Throttle`
+- ✅ Full Swagger/OpenAPI documentation
+- ✅ SettingsRepository with Drizzle ORM
+- ✅ Input validation using Zod `safeParse`
+- ✅ Response validation against shared schemas
+
+**Frontend (apps/web):**
+- ✅ `useSettings` - TanStack Query hook for fetching settings
+- ✅ `useUpdateProfileSettings` - Optimistic updates with rollback
+- ✅ `useUpdatePrivacySettings` - Optimistic updates with rollback
+- ✅ `useUpdateNotificationSettings` - Optimistic updates with rollback
+- ✅ `useChangePassword` - Password change mutation
+- ✅ `useSubscribePush` - Push subscription mutation
+- ✅ `useAutoSaveMutation` - 500ms debounced auto-save
+- ✅ `usePushNotificationToggle` - Full push permission flow
+- ✅ `SettingsPage` - Complete settings UI with section-level error handling
+- ✅ `EditProfileModal` - Profile editing with validation
+- ✅ `ChangePasswordModal` - Password change with current password verification
+
+**Contract Compatibility Fix (2026-03-02):**
+- **Issue:** Database enum `presence_sharing` was migrated from `['everyone', 'friends', 'nobody']` to `['everyone', 'contacts', 'nobody']` in migration 0006, but settings module had hardcoded old types
+- **Files Fixed:**
+  - `apps/server/src/settings/settings.repository.ts` - Updated type annotations to use `PresenceSharing` type from shared package
+  - `apps/server/src/users/users.controller.test.ts` - Fixed test mock to include required fields
+- **Verification:** All packages now pass typecheck with zero contract drift
+
+**Verification Commands (All Pass):**
+```bash
+bun run typecheck  # ✅ All packages pass
+bun run lint       # ✅ All packages pass
+```
+
+---
+
 ### ✅ All Tasks Complete
 
 All 13 tasks are now 100% complete. See individual task sections above for implementation details.
@@ -1781,8 +1837,10 @@ All 13 tasks are now 100% complete. See individual task sections above for imple
 
 - File uploads (images, documents)
 - Message search (Elasticsearch)
-- Push notifications
 - End-to-end encryption
 - Message reactions
 - Thread replies
 - Voice/video calls
+- Message forwarding
+- Scheduled messages
+- User blocking/reporting

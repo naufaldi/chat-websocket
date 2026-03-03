@@ -86,8 +86,13 @@ describe('UsersController', () => {
 
   describe('updatePrivacy', () => {
     it('should update privacy via service', async () => {
-      const mockPrivacy = { presenceSharing: 'contacts' as const };
-      vi.mocked(service.updatePrivacy).mockResolvedValue(mockPrivacy);
+      const mockPrivacy = {
+        presenceSharing: 'contacts' as const,
+        presenceEnabled: true,
+        readReceiptsEnabled: true,
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.mocked(service.updatePrivacy).mockResolvedValue(mockPrivacy as any);
 
       const result = await controller.updatePrivacy(
         { user: { userId: 'user1' } },

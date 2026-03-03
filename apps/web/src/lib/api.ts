@@ -45,7 +45,7 @@ const MAX_REFRESH_ATTEMPTS = 3;
 
 // Auth endpoints that don't require token refresh on 401
 const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh'];
-const NO_RETRY_ENDPOINTS = ['/auth/me']; // Endpoints that should not retry with refresh
+const NO_RETRY_ENDPOINTS: string[] = [];
 
 const isAuthEndpoint = (url: string) => AUTH_ENDPOINTS.some(endpoint => url.includes(endpoint));
 const isNoRetryEndpoint = (url: string) => NO_RETRY_ENDPOINTS.some(endpoint => url.includes(endpoint));

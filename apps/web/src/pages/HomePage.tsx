@@ -6,8 +6,8 @@ import { useSocket } from '@/hooks/useSocket';
 import { usePresence } from '@/hooks/usePresence';
 import { PresenceIndicator } from '@/components/ui/PresenceIndicator';
 import { PresenceText } from '@/components/ui/PresenceIndicator';
-import { Link, useSearchParams } from 'react-router-dom';
-import { MessageSquare, Users, Clock, ChevronRight } from 'lucide-react';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { MessageSquare, ChevronRight } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useChatSocket } from '@/hooks/useChatSocket';
 import { CreateChatModal } from '@/components/chat/CreateChatModal';
@@ -85,50 +85,6 @@ function OnlineContactsSidebar() {
   );
 }
 
-function DashboardStats() {
-  const { data } = useConversations();
-  const conversations = data?.pages.flatMap(page => page.conversations) || [];
-
-  const stats = [
-    {
-      label: 'Conversations',
-      value: conversations.length,
-      icon: MessageSquare,
-      color: 'bg-blue-100 text-blue-600',
-    },
-    {
-      label: 'Contacts Online',
-      value: mockOnlineContacts.length,
-      icon: Users,
-      color: 'bg-green-100 text-green-600',
-    },
-    {
-      label: 'Last Activity',
-      value: 'Just now',
-      icon: Clock,
-      color: 'bg-purple-100 text-purple-600',
-    },
-  ];
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-      {stats.map(stat => (
-        <div key={stat.label} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${stat.color}`}>
-              <stat.icon className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-              <p className="text-sm text-gray-500">{stat.label}</p>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function RecentConversations() {
   const { data, isLoading } = useConversations();
   const conversations = data?.pages.flatMap(page => page.conversations).slice(0, 5) || [];
@@ -183,6 +139,7 @@ function RecentConversations() {
 export function HomePage() {
   const { user } = useAuthContext();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const selectedId = searchParams.get('chat') || undefined;
   const queryClient = useQueryClient();
 
@@ -217,7 +174,7 @@ export function HomePage() {
   });
 
   const handleSelect = (id: string) => {
-    setSearchParams({ chat: id });
+    navigate(`/chat?chat=${id}`);
   };
 
   const handleCreateConversation = (data: CreateConversationInput) => {
@@ -241,16 +198,6 @@ export function HomePage() {
     >
       <div className="flex-1 bg-gray-50 p-6 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Welcome back, {user?.displayName || 'User'}!
-            </h1>
-            <p className="text-gray-500 mt-1">
-              Here's what's happening with your conversations
-            </p>
-          </div>
-
-          <DashboardStats />
           <RecentConversations />
         </div>
       </div>

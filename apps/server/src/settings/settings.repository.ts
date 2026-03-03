@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { DRIZZLE } from '../database/database.service';
 import type { DrizzleDB } from '../database/database.types';
 import { users, pushSubscriptions } from '@chat/db';
-import type { SettingsResponse, PushSubscriptionInput } from '@chat/shared';
+import type { SettingsResponse, PushSubscriptionInput, PresenceSharing } from '@chat/shared';
 
 @Injectable()
 export class SettingsRepository {
@@ -55,7 +55,7 @@ export class SettingsRepository {
     data: Partial<{
       displayName: string;
       avatarUrl: string | null;
-      profilePhotoVisibility: 'everyone' | 'friends' | 'nobody';
+      profilePhotoVisibility: PresenceSharing;
     }>,
   ): Promise<SettingsResponse | null> {
     const updateData: Partial<typeof users.$inferInsert> = {
@@ -115,7 +115,7 @@ export class SettingsRepository {
     userId: string,
     data: Partial<{
       presenceEnabled: boolean;
-      presenceSharing: 'everyone' | 'friends' | 'nobody';
+      presenceSharing: PresenceSharing;
       readReceiptsEnabled: boolean;
     }>,
   ): Promise<SettingsResponse | null> {
