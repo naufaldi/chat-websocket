@@ -29,6 +29,7 @@ export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get()
+  @Throttle({ default: { limit: 60, ttl: 60000 } }) // 60 requests per minute
   @ApiOperation({ summary: 'Get all user settings', description: 'Retrieve profile, privacy, and notification settings for the current user' })
   @ApiResponse({
     status: 200,
@@ -40,9 +41,9 @@ export class SettingsController {
         username: { type: 'string' },
         displayName: { type: 'string' },
         avatarUrl: { type: 'string', nullable: true },
-        profilePhotoVisibility: { type: 'string', enum: ['everyone', 'friends', 'nobody'] },
+        profilePhotoVisibility: { type: 'string', enum: ['everyone', 'contacts', 'nobody'] },
         presenceEnabled: { type: 'boolean' },
-        presenceSharing: { type: 'string', enum: ['everyone', 'friends', 'nobody'] },
+        presenceSharing: { type: 'string', enum: ['everyone', 'contacts', 'nobody'] },
         readReceiptsEnabled: { type: 'boolean' },
         pushNotificationsEnabled: { type: 'boolean' },
       },
@@ -65,7 +66,7 @@ export class SettingsController {
       properties: {
         displayName: { type: 'string', minLength: 1, maxLength: 100, example: 'John Doe' },
         avatarUrl: { type: 'string', format: 'url', nullable: true, example: 'https://example.com/avatar.jpg' },
-        profilePhotoVisibility: { type: 'string', enum: ['everyone', 'friends', 'nobody'], example: 'everyone' },
+        profilePhotoVisibility: { type: 'string', enum: ['everyone', 'contacts', 'nobody'], example: 'everyone' },
       },
     },
   })
@@ -79,9 +80,9 @@ export class SettingsController {
         username: { type: 'string' },
         displayName: { type: 'string' },
         avatarUrl: { type: 'string', nullable: true },
-        profilePhotoVisibility: { type: 'string', enum: ['everyone', 'friends', 'nobody'] },
+        profilePhotoVisibility: { type: 'string', enum: ['everyone', 'contacts', 'nobody'] },
         presenceEnabled: { type: 'boolean' },
-        presenceSharing: { type: 'string', enum: ['everyone', 'friends', 'nobody'] },
+        presenceSharing: { type: 'string', enum: ['everyone', 'contacts', 'nobody'] },
         readReceiptsEnabled: { type: 'boolean' },
         pushNotificationsEnabled: { type: 'boolean' },
       },
@@ -106,7 +107,7 @@ export class SettingsController {
       type: 'object',
       properties: {
         presenceEnabled: { type: 'boolean', example: true },
-        presenceSharing: { type: 'string', enum: ['everyone', 'friends', 'nobody'], example: 'everyone' },
+        presenceSharing: { type: 'string', enum: ['everyone', 'contacts', 'nobody'], example: 'everyone' },
         readReceiptsEnabled: { type: 'boolean', example: true },
       },
     },
@@ -121,9 +122,9 @@ export class SettingsController {
         username: { type: 'string' },
         displayName: { type: 'string' },
         avatarUrl: { type: 'string', nullable: true },
-        profilePhotoVisibility: { type: 'string', enum: ['everyone', 'friends', 'nobody'] },
+        profilePhotoVisibility: { type: 'string', enum: ['everyone', 'contacts', 'nobody'] },
         presenceEnabled: { type: 'boolean' },
-        presenceSharing: { type: 'string', enum: ['everyone', 'friends', 'nobody'] },
+        presenceSharing: { type: 'string', enum: ['everyone', 'contacts', 'nobody'] },
         readReceiptsEnabled: { type: 'boolean' },
         pushNotificationsEnabled: { type: 'boolean' },
       },
@@ -161,9 +162,9 @@ export class SettingsController {
         username: { type: 'string' },
         displayName: { type: 'string' },
         avatarUrl: { type: 'string', nullable: true },
-        profilePhotoVisibility: { type: 'string', enum: ['everyone', 'friends', 'nobody'] },
+        profilePhotoVisibility: { type: 'string', enum: ['everyone', 'contacts', 'nobody'] },
         presenceEnabled: { type: 'boolean' },
-        presenceSharing: { type: 'string', enum: ['everyone', 'friends', 'nobody'] },
+        presenceSharing: { type: 'string', enum: ['everyone', 'contacts', 'nobody'] },
         readReceiptsEnabled: { type: 'boolean' },
         pushNotificationsEnabled: { type: 'boolean' },
       },

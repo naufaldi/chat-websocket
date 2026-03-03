@@ -10,6 +10,47 @@
  */
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { load } from 'js-yaml';
+
+const composeFilePath = resolve(__dirname, '../../../docker-compose.yml');
+
+const getComposeContent = (): string => readFileSync(composeFilePath, 'utf-8');
+
+interface ComposeConfig {
+  services?: {
+    app?: {
+      build?: {
+        context?: string;
+        dockerfile?: string;
+      };
+      healthcheck?: {
+        test?: string[];
+      };
+    };
+    postgres?: {
+      image?: string;
+    };
+    redis?: {
+      image?: string;
+    };
+  };
+}
+
+const getComposeConfig = (): ComposeConfig => load(getComposeContent()) as ComposeConfig;
+
+interface PrometheusConfig {
+  scrape_configs?: Array<{
+    job_name?: string;
+    metrics_path?: string;
+  }>;
+}
+
+const prometheusFilePath = resolve(__dirname, '../../../prometheus.yml');
+const getPrometheusConfig = (): PrometheusConfig =>
+  load(readFileSync(prometheusFilePath, 'utf-8')) as PrometheusConfig;
+const dockerfilePath = resolve(__dirname, '../Dockerfile');
 
 // ============================================================================
 // HEALTH ENDPOINT SCHEMA TESTS
@@ -100,30 +141,38 @@ describe('Health Endpoints Schema', () => {
 // ============================================================================
 
 describe('Docker Compose Configuration', () => {
+  it('uses apps/server/Dockerfile for app service build', () => {
+    const composeConfig = getComposeConfig();
+
+    expect(composeConfig.services?.app?.build?.context).toBe('.');
+    expect(composeConfig.services?.app?.build?.dockerfile).toBe('apps/server/Dockerfile');
+  });
+
   it('validates docker-compose service structure', () => {
-    const config = {
-      version: '3.8',
-      services: {
-        app: {
-          build: '.',
-          ports: ['3000:3000'],
-          environment: ['DATABASE_URL', 'REDIS_URL', 'JWT_SECRET'],
-          depends_on: ['postgres', 'redis'],
-        },
-        postgres: {
-          image: 'postgres:15-alpine',
-          volumes: ['postgres_data:/var/lib/postgresql/data'],
-        },
-        redis: {
-          image: 'redis:7-alpine',
-          volumes: ['redis_data:/data'],
-        },
-      },
-    };
-    
-    expect(config.services.app.build).toBe('.');
-    expect(config.services.postgres.image).toBe('postgres:15-alpine');
-    expect(config.services.redis.image).toBe('redis:7-alpine');
+    const composeConfig = getComposeConfig();
+
+    expect(composeConfig.services?.postgres?.image).toBe('postgres:15-alpine');
+    expect(composeConfig.services?.redis?.image).toBe('redis:7-alpine');
+  });
+
+  it('uses /api-prefixed liveness endpoint in app healthcheck', () => {
+    const composeConfig = getComposeConfig();
+    const healthcheckCommand = composeConfig.services?.app?.healthcheck?.test ?? [];
+
+    expect(healthcheckCommand).toContain('http://localhost:3000/api/health/live');
+  });
+
+  it('uses /api/metrics as Prometheus scrape path', () => {
+    const prometheusConfig = getPrometheusConfig();
+    const apiJob = prometheusConfig.scrape_configs?.find((job) => job.job_name === 'chat-api');
+
+    expect(apiJob?.metrics_path).toBe('/api/metrics');
+  });
+
+  it('uses /api-prefixed liveness endpoint in server Dockerfile healthcheck', () => {
+    const dockerfileContent = readFileSync(dockerfilePath, 'utf-8');
+
+    expect(dockerfileContent).toContain('http://localhost:3000/api/health/live');
   });
 
   it('validates app service with replicas', () => {

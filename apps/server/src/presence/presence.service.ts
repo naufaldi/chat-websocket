@@ -63,9 +63,9 @@ export class PresenceService {
       };
     }
 
-    // For 'friends' - in a real implementation, would check friendship
+    // For 'contacts' - in a real implementation, would check contact relationship
     // For now, we'll return the actual presence
-    // TODO: Check friendship when 'friends' option is used
+    // TODO: Check contact relationship when 'contacts' option is used
 
     // Return actual presence (would come from Redis in production)
     return {

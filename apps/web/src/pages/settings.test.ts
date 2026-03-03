@@ -40,11 +40,11 @@ describe('Settings Page', () => {
   });
 
   it('privacy toggle options are correct', () => {
-    const validOptions = ['everyone', 'friends', 'nobody'];
+    const validOptions = ['everyone', 'contacts', 'nobody'];
     const isValidOption = (option: string) => validOptions.includes(option);
 
     expect(isValidOption('everyone')).toBe(true);
-    expect(isValidOption('friends')).toBe(true);
+    expect(isValidOption('contacts')).toBe(true);
     expect(isValidOption('nobody')).toBe(true);
     expect(isValidOption('invalid')).toBe(false);
   });

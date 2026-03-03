@@ -140,7 +140,7 @@ export class AuthService {
 
       // Calculate expiration time in milliseconds
       const expiresInMs = payload.exp * 1000;
-      this.tokenBlacklistService.add(payload.jti, expiresInMs);
+      await this.tokenBlacklistService.add(payload.jti, expiresInMs);
     } catch {
       // Token is invalid anyway, nothing to blacklist
     }
@@ -149,12 +149,12 @@ export class AuthService {
   /**
    * Check if a refresh token is blacklisted
    */
-  isRefreshTokenBlacklisted(refreshToken: string): boolean {
+  async isRefreshTokenBlacklisted(refreshToken: string): Promise<boolean> {
     try {
       const payload = this.jwtService.verify(refreshToken, {
         secret: this.configService.get('JWT_REFRESH_SECRET') || this.configService.get('JWT_SECRET'),
       });
-      return this.tokenBlacklistService.isBlacklisted(payload.jti);
+      return await this.tokenBlacklistService.isBlacklisted(payload.jti);
     } catch {
       return false;
     }
@@ -163,12 +163,12 @@ export class AuthService {
   /**
    * Check if an access token is blacklisted
    */
-  isAccessTokenBlacklisted(accessToken: string): boolean {
+  async isAccessTokenBlacklisted(accessToken: string): Promise<boolean> {
     try {
       const payload = this.jwtService.verify(accessToken, {
         secret: this.configService.get('JWT_SECRET'),
       });
-      return this.tokenBlacklistService.isBlacklisted(payload.jti);
+      return await this.tokenBlacklistService.isBlacklisted(payload.jti);
     } catch {
       return false;
     }

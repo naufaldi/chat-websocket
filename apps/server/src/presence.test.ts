@@ -42,7 +42,7 @@ describe('Presence Database Schema', () => {
     });
 
     it('should allow presence_sharing values', () => {
-      const sharingOptions = ['everyone', 'friends', 'nobody'];
+      const sharingOptions = ['everyone', 'contacts', 'nobody'];
       
       sharingOptions.forEach((option) => {
         const user = {
@@ -173,12 +173,12 @@ describe('Presence REST API', () => {
       }
     });
 
-    it('returns 403 when privacy setting is friends and not friends', () => {
-      const userPrivacySetting = 'friends';
+    it('returns 403 when privacy setting is contacts and requester is not a contact', () => {
+      const userPrivacySetting = 'contacts';
       const _requesterId = 'different-user-id';
       
-      // When privacy is 'friends', only friends should see presence
-      if (userPrivacySetting === 'friends') {
+      // When privacy is 'contacts', only contacts should see presence
+      if (userPrivacySetting === 'contacts') {
         expect(true).toBe(true); // Would return 403 in real implementation
       }
     });

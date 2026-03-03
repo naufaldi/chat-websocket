@@ -4,7 +4,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: apps/server/Dockerfile
     labels:
       caddy: chat.faldi.xyz
       caddy.reverse_proxy: "{{upstream http://app:3000}}"
@@ -25,7 +25,7 @@ services:
       replicas: 2
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3

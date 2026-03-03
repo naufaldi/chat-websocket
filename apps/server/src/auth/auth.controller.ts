@@ -83,7 +83,7 @@ export class AuthController {
     }
 
     // Check if refresh token is blacklisted
-    if (this.authService.isRefreshTokenBlacklisted(refreshToken)) {
+    if (await this.authService.isRefreshTokenBlacklisted(refreshToken)) {
       throw new UnauthorizedException('Token has been revoked');
     }
 

@@ -67,8 +67,8 @@ describe('AuthService', () => {
     } as unknown as ConfigService;
 
     mockTokenBlacklistService = {
-      add: vi.fn(),
-      isBlacklisted: vi.fn().mockReturnValue(false),
+      add: vi.fn().mockResolvedValue(undefined),
+      isBlacklisted: vi.fn().mockResolvedValue(false),
     } as unknown as TokenBlacklistService;
 
     authService = new AuthService(

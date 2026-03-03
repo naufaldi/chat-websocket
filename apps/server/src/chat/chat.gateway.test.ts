@@ -87,7 +87,7 @@ describe('ChatGateway', () => {
       get: vi.fn().mockReturnValue('secret'),
     };
     tokenBlacklistService = {
-      isBlacklisted: vi.fn().mockReturnValue(false),
+      isBlacklisted: vi.fn().mockResolvedValue(false),
     };
     chatService = createChatServiceMock();
     presenceService = createPresenceServiceMock();
@@ -125,6 +125,20 @@ describe('ChatGateway', () => {
 
     expect(client.emit).toHaveBeenCalledWith('auth:error', {
       error: 'Unauthorized',
+      code: 'AUTH_FAILED',
+    });
+    expect(client.disconnect).toHaveBeenCalledWith(true);
+  });
+
+  it('emits auth:error and disconnects when token is revoked', async () => {
+    (jwtService.verifyAsync as ReturnType<typeof vi.fn>).mockResolvedValue({ sub: USER_ID, jti: 'jti-1' });
+    (tokenBlacklistService.isBlacklisted as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    const client = createClientMock();
+
+    await gateway.handleConnection(client as never);
+
+    expect(client.emit).toHaveBeenCalledWith('auth:error', {
+      error: 'Token has been revoked',
       code: 'AUTH_FAILED',
     });
     expect(client.disconnect).toHaveBeenCalledWith(true);

@@ -119,7 +119,7 @@ export class UsersController {
       properties: {
         presenceSharing: {
           type: 'string',
-          enum: ['everyone', 'friends', 'nobody'],
+          enum: ['everyone', 'contacts', 'nobody'],
           example: 'everyone',
           description: 'Who can see your online status',
         },
@@ -132,7 +132,7 @@ export class UsersController {
     schema: {
       type: 'object',
       properties: {
-        presenceSharing: { type: 'string', enum: ['everyone', 'friends', 'nobody'] },
+        presenceSharing: { type: 'string', enum: ['everyone', 'contacts', 'nobody'] },
       },
     },
   })

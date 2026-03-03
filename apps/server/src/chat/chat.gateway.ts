@@ -82,7 +82,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         secret: this.configService.get('JWT_SECRET'),
       });
 
-      if (payload.jti && this.tokenBlacklistService.isBlacklisted(payload.jti)) {
+      if (payload.jti && await this.tokenBlacklistService.isBlacklisted(payload.jti)) {
         this.emitAuthError(client, 'Token has been revoked', 'AUTH_FAILED');
         client.disconnect(true);
         return;
