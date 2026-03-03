@@ -13,6 +13,12 @@ This is a **Bun + Turborepo monorepo** with NestJS backend and Vite/React fronte
 
 ---
 
+## Development Server
+
+**Important:** Never run `bun run dev` to start the server. Assume the development server is already running. Only restart if explicitly requested by the user.
+
+---
+
 ## Project State (Living Document)
 
 **CRITICAL:** Always check `docs/TASKS.md` before starting any work.

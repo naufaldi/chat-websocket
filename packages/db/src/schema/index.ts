@@ -17,6 +17,7 @@ export const contentTypeEnum = pgEnum('content_type', ['text', 'image', 'file'])
 export const messageStatusEnum = pgEnum('message_status', ['sending', 'delivered', 'read', 'error']);
 export const participantRoleEnum = pgEnum('participant_role', ['owner', 'admin', 'member']);
 export const presenceSharingEnum = pgEnum('presence_sharing', ['everyone', 'contacts', 'nobody']);
+export const contactStatusEnum = pgEnum('contact_status', ['pending', 'accepted', 'blocked']);
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -68,6 +69,19 @@ export const conversationParticipants = pgTable('conversation_participants', {
   lastReadAt: timestamp('last_read_at', { withTimezone: true }),
 }, (table) => ({
   convUserIdx: uniqueIndex('idx_participants_conv_user').on(table.conversationId, table.userId),
+}));
+
+export const userContacts = pgTable('user_contacts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  requesterId: uuid('requester_id').references(() => users.id).notNull(),
+  addresseeId: uuid('addressee_id').references(() => users.id).notNull(),
+  status: contactStatusEnum('status').default('pending').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  requesterAddresseeIdx: uniqueIndex('idx_contacts_requester_addressee').on(table.requesterId, table.addresseeId),
+  addresseeIdx: index('idx_contacts_addressee').on(table.addresseeId),
+  statusIdx: index('idx_contacts_status').on(table.status),
 }));
 
 // Read receipts table

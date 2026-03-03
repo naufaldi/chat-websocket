@@ -69,16 +69,19 @@ function ToggleSwitch({ enabled, onChange, disabled }: ToggleSwitchProps) {
     <button
       onClick={onChange}
       disabled={disabled}
-      className={`w-12 h-7 rounded-full transition-colors relative disabled:opacity-50 ${
+      className={`relative w-[52px] h-8 rounded-full p-0.5 transition-colors duration-300 ease-out disabled:opacity-50 ${
         enabled ? 'bg-[#3390EC]' : 'bg-gray-300'
       }`}
       aria-checked={enabled}
       role="switch"
     >
       <span
-        className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-          enabled ? 'translate-x-6' : 'translate-x-1'
+        className={`block w-7 h-7 bg-white rounded-full shadow-md transition-transform duration-300 ease-out ${
+          enabled ? 'translate-x-[22px]' : 'translate-x-0'
         }`}
+        style={{
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+        }}
       />
     </button>
   );

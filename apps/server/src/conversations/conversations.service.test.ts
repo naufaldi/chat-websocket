@@ -16,6 +16,7 @@ interface RepositoryMock {
   findParticipants: ReturnType<typeof vi.fn>;
   getLastMessage: ReturnType<typeof vi.fn>;
   getParticipantCount: ReturnType<typeof vi.fn>;
+  getUnreadCount: ReturnType<typeof vi.fn>;
   create: ReturnType<typeof vi.fn>;
   findById: ReturnType<typeof vi.fn>;
   isUserParticipant: ReturnType<typeof vi.fn>;
@@ -30,6 +31,7 @@ function createRepositoryMock(): RepositoryMock {
     findParticipants: vi.fn(),
     getLastMessage: vi.fn(),
     getParticipantCount: vi.fn(),
+    getUnreadCount: vi.fn(),
     create: vi.fn(),
     findById: vi.fn(),
     isUserParticipant: vi.fn(),
@@ -139,11 +141,14 @@ describe('ConversationsService', () => {
       createdAt: new Date('2026-01-01T00:01:00.000Z'),
     });
     repository.getParticipantCount.mockResolvedValue(1);
+    repository.getUnreadCount.mockResolvedValue(7);
 
     const result = await service.findAllByUser(USER_ID, undefined, 20);
     expect(result).toMatchObject(conversationsListResponseSchema.parse(result));
     expect(result.hasMore).toBe(true);
     expect(result.nextCursor).toBe('cursor-1');
+    expect(result.conversations[0]?.unreadCount).toBe(7);
+    expect(repository.getUnreadCount).toHaveBeenCalledWith(CONVERSATION_ID, USER_ID);
   });
 
   it('returns created conversation matching shared schema', async () => {

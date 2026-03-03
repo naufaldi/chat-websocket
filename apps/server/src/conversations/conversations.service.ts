@@ -59,7 +59,7 @@ export class ConversationsService {
               }
             : null,
           participantCount,
-          unreadCount: 0, // TODO: Implement unread count
+          unreadCount: await this.repository.getUnreadCount(conv.id, userId),
         };
       })
     );

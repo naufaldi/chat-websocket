@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, desc, and, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import { eq, desc, and, inArray, isNull, lt, or, sql, gt, ne } from 'drizzle-orm';
 import { DRIZZLE } from '../database/database.service';
 import type { DrizzleDB } from '../database/database.types';
 import { conversations, conversationParticipants, users, messages } from '@chat/db';
@@ -226,6 +226,75 @@ export class ConversationsRepository {
       .from(conversationParticipants)
       .where(eq(conversationParticipants.conversationId, conversationId));
     return result[0]?.count ?? 0;
+  }
+
+  async getUnreadCount(conversationId: string, userId: string): Promise<number> {
+    const [participant] = await this.db
+      .select({
+        lastReadMessageId: conversationParticipants.lastReadMessageId,
+      })
+      .from(conversationParticipants)
+      .where(
+        and(
+          eq(conversationParticipants.conversationId, conversationId),
+          eq(conversationParticipants.userId, userId),
+        ),
+      )
+      .limit(1);
+
+    if (!participant) {
+      return 0;
+    }
+
+    if (!participant.lastReadMessageId) {
+      const unreadResult = await this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.conversationId, conversationId),
+            ne(messages.senderId, userId),
+            isNull(messages.deletedAt),
+          ),
+        );
+
+      return unreadResult[0]?.count ?? 0;
+    }
+
+    const [lastReadMessage] = await this.db
+      .select({ createdAt: messages.createdAt })
+      .from(messages)
+      .where(eq(messages.id, participant.lastReadMessageId))
+      .limit(1);
+
+    if (!lastReadMessage) {
+      const unreadResult = await this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.conversationId, conversationId),
+            ne(messages.senderId, userId),
+            isNull(messages.deletedAt),
+          ),
+        );
+
+      return unreadResult[0]?.count ?? 0;
+    }
+
+    const unreadResult = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.conversationId, conversationId),
+          gt(messages.createdAt, lastReadMessage.createdAt),
+          ne(messages.senderId, userId),
+          isNull(messages.deletedAt),
+        ),
+      );
+
+    return unreadResult[0]?.count ?? 0;
   }
 
   async getLastMessage(conversationId: string): Promise<{ id: string; content: string; senderId: string; createdAt: Date } | null> {

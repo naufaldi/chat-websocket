@@ -6,7 +6,7 @@
 > **Tech Stack:** NestJS 11.x + Drizzle 0.45.x + PostgreSQL + Redis + Socket.io 4.x + Bun Workspaces  
 > **Frontend:** React 19.x + Vite 7.x + TanStack Query 5.x + Tailwind 4.x  
 > **Documentation:** Swagger/OpenAPI 3.0  
-> **Last Updated:** 2026-03-02 (Cross-Stream Integration Complete - Settings Contract Drift Fixed)
+> **Last Updated:** 2026-03-03 (Council Readiness Audit + P0 Release Blockers Implemented in working tree)
 
 ---
 
@@ -1844,3 +1844,47 @@ All 13 tasks are now 100% complete. See individual task sections above for imple
 - Message forwarding
 - Scheduled messages
 - User blocking/reporting
+
+---
+
+## 🎫 Ticketing Backlog (Council Audit - 2026-03-03)
+
+> Purpose: Convert readiness audit findings into actionable tickets for Linear/Jira.
+> Source: Codebase-wide council scan + 10 parallel deep-dive subagents.
+> Scope: Production deploy readiness, usability gaps, security hardening, and docs/ops alignment.
+
+| Ticket ID | Priority | Area | Title | Problem Statement | Impact if Not Fixed | Proposed Owner | Est. Effort |
+|-----------|----------|------|-------|-------------------|---------------------|----------------|-------------|
+| TKT-001 | P0 | DevOps | Fix Docker Compose build path | `docker-compose.yml` points to root `Dockerfile`, but actual file is `apps/server/Dockerfile`. | Deployment fails at build stage. | Backend/DevOps | S |
+| TKT-002 | P0 | DevOps | Align health + metrics paths with `/api` prefix | App uses global `/api` prefix, but probes/scrape use `/health/live` and `/metrics` without prefix. | Containers marked unhealthy; Prometheus fails to scrape. | Backend/DevOps | S |
+| TKT-003 | P0 | Database | Safe enum migration for `friends -> contacts` | Migration can fail if existing rows still contain `friends` value. | Production migration outage or rollback event. | Backend/DB | M |
+| TKT-004 | P0 | Security/Auth | Replace in-memory token blacklist with shared store | Revocation is process-local (Map); breaks across replicas/restarts. | Logout/token revocation unreliable in production. | Backend | M |
+| TKT-005 | P1 | API | Implement real unread count in conversation list | `unreadCount` is currently a placeholder value. | Incorrect UX state and notification trust issues. | Backend | M |
+| TKT-006 | P1 | Presence | Complete presence privacy logic | `friends/contacts` privacy logic is TODO; REST presence is optimistic. | Privacy mismatch and inaccurate online status. | Backend | M |
+| TKT-007 | P1 | Frontend | Replace Home dashboard mock contacts with real data | Home page still uses hardcoded mock online contacts. | Dashboard appears complete but is not production-real. | Frontend | S |
+| TKT-008 | P1 | WebSocket | Reconcile WS RFC and implementation contracts | RFC payloads/flow differ from shared schemas and gateway/client behavior. | Integration errors and future feature drift. | Backend + Frontend | M |
+| TKT-009 | P1 | Security/Auth | Harden refresh token lifecycle and client handling | Refresh flow/token lifecycle has rotation and consistency gaps. | Session instability and elevated auth risk. | Backend + Frontend | M |
+| TKT-010 | P1 | Frontend | Improve mobile responsiveness for chat layout | Chat layout is desktop-first and can degrade on mobile screens. | Poor usability on mobile devices. | Frontend | M |
+| TKT-011 | P1 | Performance | Fix message pagination cursor contract mismatch | Client sends message ID cursor while server expects opaque base64 cursor. | Re-fetch loops, extra API load, degraded chat history UX. | Backend + Frontend | M |
+| TKT-012 | P1 | Reliability | Make read-receipt batch queue processing atomic | Redis queue handling uses non-atomic read/delete pattern. | Potential receipt loss under concurrency. | Backend | M |
+| TKT-013 | P2 | Observability | Add Grafana provisioning assets or remove stale mount | Compose references `./grafana/provisioning` but folder is missing. | Fragile monitoring setup and confusing deploy behavior. | DevOps | S |
+| TKT-014 | P2 | Testing | Add test coverage gates and raise behavioral test depth | Many tests are high-level/export checks; no fail-under coverage policy. | False confidence in release readiness. | Backend + Frontend | M |
+| TKT-015 | P2 | Docs | Resolve docs-to-code drift in TASKS and RFCs | TASKS/RFC sections conflict with actual code/deploy setup. | Team confusion, incorrect implementation assumptions. | Tech Lead/Docs | S |
+| TKT-016 | P2 | Operations | Create production runbooks (incident, backup/restore, migration safety) | No operator-grade runbooks for oncall/recovery procedures. | Slow incident response and high recovery risk. | DevOps + Backend | M |
+
+### Suggested Ticket Order for Execution
+
+1. **Release Blockers (P0):** TKT-001, TKT-002, TKT-003, TKT-004
+2. **Production Readiness (P1):** TKT-005 to TKT-012
+3. **Hardening + Governance (P2):** TKT-013 to TKT-016
+
+### Notes for Linear Translation
+
+- Keep ticket IDs (`TKT-001` etc.) as temporary aliases during import.
+- Convert `Est. Effort` to team sizing scale (XS/S/M/L) if needed.
+- Add `acceptance criteria` as a subtask checklist per ticket during import.
+
+### Ticket Status Updates
+
+- ✅ **TKT-005 / PER-56 completed (2026-03-03):** conversation list now returns real `unreadCount` via `ConversationsRepository.getUnreadCount()` and `ConversationsService.findAllByUser()`.
+- ✅ **TKT-006 / PER-57 completed (2026-03-03):** presence privacy now enforces `contacts` visibility using persisted `user_contacts` relationships and presence service checks.

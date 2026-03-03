@@ -4,21 +4,34 @@ import { DRIZZLE } from '../database/database.service';
 import type { DrizzleDB } from '../database/database.types';
 import { users } from '@chat/db';
 import { eq } from 'drizzle-orm';
+import { FriendsRepository } from '../friends/friends.repository';
+
+type UserPresenceResult = {
+  userId: string;
+  status: 'online' | 'offline';
+  lastActivity: string | null;
+  lastSeenAt: string | null;
+};
+
+const toHiddenPresence = (id: string): UserPresenceResult => ({
+  userId: id,
+  status: 'offline' as const,
+  lastActivity: null,
+  lastSeenAt: null,
+});
 
 @Injectable()
 export class PresenceService {
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: DrizzleDB,
+    private readonly friendsRepository: FriendsRepository,
+  ) {}
 
   /**
    * Get user presence status
    * Respects privacy settings
    */
-  async getUserPresence(userId: string, _requesterId: string): Promise<{
-    userId: string;
-    status: 'online' | 'offline';
-    lastActivity: string | null;
-    lastSeenAt: string | null;
-  }> {
+  async getUserPresence(userId: string, requesterId: string): Promise<UserPresenceResult> {
     const [user] = await this.db
       .select({
         id: users.id,
@@ -43,29 +56,21 @@ export class PresenceService {
 
     // Check privacy settings
     if (!user.presenceEnabled) {
-      // User has presence disabled - return offline
-      return {
-        userId: user.id,
-        status: 'offline' as const,
-        lastActivity: null,
-        lastSeenAt: user.lastSeenAt?.toISOString() ?? null,
-      };
+      return toHiddenPresence(user.id);
     }
 
     // Check sharing setting
     if (user.presenceSharing === 'nobody') {
-      // Only return offline status
-      return {
-        userId: user.id,
-        status: 'offline' as const,
-        lastActivity: null,
-        lastSeenAt: user.lastSeenAt?.toISOString() ?? null,
-      };
+      return toHiddenPresence(user.id);
     }
 
-    // For 'contacts' - in a real implementation, would check contact relationship
-    // For now, we'll return the actual presence
-    // TODO: Check contact relationship when 'contacts' option is used
+    if (user.presenceSharing === 'contacts' && userId !== requesterId) {
+      const isContact = await this.friendsRepository.areContacts(userId, requesterId);
+
+      if (!isContact) {
+        return toHiddenPresence(user.id);
+      }
+    }
 
     // Return actual presence (would come from Redis in production)
     return {
