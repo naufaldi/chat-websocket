@@ -6,15 +6,13 @@ services:
       context: .
       dockerfile: apps/server/Dockerfile
     labels:
-      caddy: chat.faldi.xyz
-      caddy.reverse_proxy: "{{upstream http://app:3000}}"
-    ports:
-      - "3000:3000"
+      caddy: chat.naufaldi.com
+      caddy.reverse_proxy: "{{upstreams 3000}}"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/chat
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
-      - CLIENT_URL=${CLIENT_URL:-https://chat.faldi.xyz}
+      - CLIENT_URL=${CLIENT_URL:-https://chat.naufaldi.com}
       - NODE_ENV=production
     depends_on:
       postgres:
