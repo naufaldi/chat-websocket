@@ -6,6 +6,21 @@ import { createClient } from 'redis';
 
 type RedisClient = ReturnType<typeof createClient>;
 
+export function isAllowedWebSocketOrigin(
+  requestOrigin: string | undefined,
+  allowedOrigin: string,
+): boolean {
+  if (!requestOrigin) {
+    return false;
+  }
+
+  try {
+    return new URL(requestOrigin).origin === new URL(allowedOrigin).origin;
+  } catch {
+    return false;
+  }
+}
+
 export class RedisIoAdapter extends IoAdapter {
   private readonly logger = new Logger(RedisIoAdapter.name);
   private pubClient?: RedisClient;
@@ -30,7 +45,16 @@ export class RedisIoAdapter extends IoAdapter {
     if (port === 0 && (!this.httpServer || typeof (this.httpServer as { listeners?: unknown }).listeners !== 'function')) {
       throw new Error('RedisIoAdapter requires a valid Node HTTP server with listeners() support');
     }
-    const server = super.createIOServer(port, options);
+    const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
+    const server = super.createIOServer(port, {
+      ...options,
+      allowRequest: (request, callback) => {
+        callback(
+          null,
+          isAllowedWebSocketOrigin(request.headers.origin, allowedOrigin),
+        );
+      },
+    });
     if (this.pubClient && this.subClient) {
       server.adapter(createAdapter(this.pubClient, this.subClient));
     }
