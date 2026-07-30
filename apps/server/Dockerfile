@@ -3,18 +3,25 @@ FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json bun.lockb ./
+# Copy package files while preserving workspace directory structure
+COPY package.json bun.lock tsconfig.json ./
 COPY apps/server/package.json apps/server/
-COPY packages/*/package.json packages/*/
-COPY packages/*/src packages/*/src
+COPY apps/web/package.json apps/web/package.json
+COPY packages/db/package.json packages/db/package.json
+COPY packages/shared/package.json packages/shared/package.json
 
 # Install dependencies
 RUN bun install --frozen-lockfile
 
 # Copy source code
+COPY apps/server/tsconfig.json apps/server/nest-cli.json apps/server/
 COPY apps/server/src apps/server/src
-COPY packages/*/src packages/*/src
+COPY packages/db packages/db
+COPY packages/shared packages/shared
+
+# Build workspace dependencies used by the server
+WORKDIR /app/packages/shared
+RUN bun run build
 
 # Build the application
 WORKDIR /app/apps/server
@@ -30,15 +37,11 @@ COPY --from=builder /app/apps/server/dist dist/
 COPY --from=builder /app/apps/server/node_modules node_modules/
 COPY --from=builder /app/packages packages/
 
-# Create production user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
 # Set ownership
-RUN chown -R nodejs:nodejs /app
+RUN chown -R bun:bun /app
 
 # Switch to non-root user
-USER nodejs
+USER bun
 
 # Expose port
 EXPOSE 3000
